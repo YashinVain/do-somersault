@@ -8,8 +8,11 @@ namespace JumpGame
     {
         [SerializeField] Transform[] edges;
         [SerializeField] Bounds[] solids;
+        [Tooltip("Per spot: +1 films from -X, -1 from +X, 0 picks by the spot's position.")]
+        [SerializeField] float[] cameraSides;
 
         public int Count => edges.Length;
+        public float CameraSide(int i) => cameraSides != null && i < cameraSides.Length ? cameraSides[i] : 0f;
         public Transform Edge(int i) => edges[Mathf.Clamp(i, 0, edges.Length - 1)];
         public float Height(int i) => Edge(i).position.y;
 

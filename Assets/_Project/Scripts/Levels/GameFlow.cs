@@ -68,6 +68,19 @@ namespace JumpGame
             return pick;
         }
 
+        public Transform EdgeOf(int index)
+        {
+            var level = levels.levels[index];
+            return sites[level.location].Tower.Edge(level.platform);
+        }
+
+        // The spot a level is jumped from, in the world.
+        public Vector3 SpotOf(int index)
+        {
+            var level = levels.levels[index];
+            return sites[level.location].Tower.Edge(level.platform).position;
+        }
+
         public Vector3 ZoneCenterOf(int index)
         {
             var level = levels.levels[index];
@@ -135,8 +148,9 @@ namespace JumpGame
 
             // Film from the outer side of the platform so the rest of the tower stays behind the diver.
             // Measured inside the location, since the blocks themselves stand far apart along X.
-            float sideX = site.transform.InverseTransformPoint(edge.position).x;
-            cam.SetSide(sideX > 0.1f ? -1f : 1f);
+            float side = site.Tower.CameraSide(level.platform);
+            if (side == 0f) side = site.transform.InverseTransformPoint(edge.position).x > 0.1f ? -1f : 1f;
+            cam.SetSide(side);
             cam.Snap();
 
             progress.last = current;

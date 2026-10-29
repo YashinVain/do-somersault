@@ -25,7 +25,8 @@ namespace JumpGame.EditorTools
 
         // Each location sits on its own block; they stand side by side along X.
         const float PoolBlockHalf = 32f, PoolBlockZ = 6f, PoolBlockTop = -3.1f;
-        static readonly Vector3[] SiteOffsets = { Vector3.zero, new(230f, 0f, 0f), new(460f, 0f, 0f) };
+        // Placed towards -X: the map camera faces back at the towers, so -X is on the right of the screen and "next" comes in from the right.
+        static readonly Vector3[] SiteOffsets = { Vector3.zero, new(-230f, 0f, 0f), new(-460f, 0f, 0f) };
 
         // Platform heights, sideways position and how far the front edge reaches over the water.
         static readonly (float height, float x, float edgeZ)[] Platforms =
@@ -241,13 +242,30 @@ namespace JumpGame.EditorTools
             for (float y = 0.7f; y < 9.9f; y += 0.38f)
                 Box("Rung", root, new Vector3(0f, y, TowerBack - 0.1f), new Vector3(0.6f, 0.04f, 0.05f), metal);
 
-            return MakeTower(root, edges, solids);
+            // A starting block on the near end of the pool: the lowest, first dive of the game.
+            var block = new Vector3(3.9f, (DeckTop + 0.8f) * 0.5f, PoolZ.x - 0.35f);
+            var blockSize = new Vector3(0.6f, 0.8f - DeckTop, 0.7f);
+            Box("StartingBlock", root, block, blockSize, accent);
+            Box("StartingBlock_Top", root, new Vector3(3.9f, 0.805f, PoolZ.x - 0.35f), new Vector3(0.62f, 0.01f, 0.72f), metal);
+            solids.Add(new Bounds(block, blockSize));
+            var blockEdge = Mark("StartingBlock_Mark", root, new Vector3(3.9f, 0.8f, PoolZ.x));
+
+            var spots = new Transform[edges.Length + 1];
+            spots[0] = blockEdge;
+            for (int i = 0; i < edges.Length; i++) spots[i + 1] = edges[i];
+            return MakeTower(root, spots, solids);
         }
 
-        static DivingTower MakeTower(Transform root, Transform[] edges, System.Collections.Generic.List<Bounds> solids)
+        static DivingTower MakeTower(Transform root, Transform[] edges, System.Collections.Generic.List<Bounds> solids, float[] sides = null)
         {
             var tower = root.gameObject.AddComponent<DivingTower>();
             var so = new SerializedObject(tower);
+            if (sides != null)
+            {
+                var sp = so.FindProperty("cameraSides");
+                sp.arraySize = sides.Length;
+                for (int i = 0; i < sides.Length; i++) sp.GetArrayElementAtIndex(i).floatValue = sides[i];
+            }
             var arr = so.FindProperty("edges");
             arr.arraySize = edges.Length;
             for (int i = 0; i < edges.Length; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = edges[i];
@@ -291,27 +309,29 @@ namespace JumpGame.EditorTools
 
             set.locations = new[] { "Городской бассейн", "Лесное озеро", "Скалы у моря" };
 
-            // Five dives per location. Pool platforms: 3 / 5 / 7.5 / 10 m. Lake tower: 5 / 8 / 11 m. Cliff ledges: 9 / 13 / 17 m.
+            // Five dives per location, each from its own spot and each higher than the last.
+            // Pool: starting block 0.8 / 3 / 5 / 7.5 / 10 m. Lake: jetty 0.8 / tower arm 5 / tree 7 / tower top 9 / bridge 12 m.
+            // Cliffs: yacht 3 / ledge 8 / house roof 11.5 / ledge 15 / lighthouse 18 m.
             // Medal thresholds are filled in by DiveCapture.TuneLevels from the best dive it can find.
             var layout = new[]
             {
-                L(0, 0, 2.2f, 1.6f, 0f, TaskKind.HeadFirst),
-                L(0, 0, 3.0f, 1.3f, 0f, TaskKind.FeetFirst),
-                L(0, 1, 3.5f, 1.3f, 0f, TaskKind.Turns, 1f),
-                L(0, 2, 4.0f, 1.2f, 0f, TaskKind.CannonballInZone),
-                L(0, 3, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
+                L(0, 0, 2.0f, 0.9f, 0f, TaskKind.HeadFirst),
+                L(0, 1, 3.0f, 1.3f, 0f, TaskKind.FeetFirst),
+                L(0, 2, 3.5f, 1.2f, 0f, TaskKind.Turns, 1f),
+                L(0, 3, 4.0f, 1.1f, 0f, TaskKind.CannonballInZone),
+                L(0, 4, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
 
-                L(1, 0, 2.3f, 1.1f, 0f, TaskKind.NoTuck),
-                L(1, 1, 4.2f, 1.2f, 0.9f, TaskKind.Bullseye),
-                L(1, 1, 5.2f, 1.0f, 0f, TaskKind.Turns, 1.5f),
-                L(1, 2, 4.8f, 1.1f, 0f, TaskKind.ZoneNoBuoys),
-                L(1, 2, 6.2f, 1.0f, 1.2f, TaskKind.CleanTurns, 2.5f),
+                L(1, 0, 2.2f, 1.1f, 0f, TaskKind.NoTuck),
+                L(1, 1, 3.8f, 1.2f, 0.9f, TaskKind.Bullseye),
+                L(1, 2, 4.6f, 1.0f, 0f, TaskKind.Turns, 1.5f),
+                L(1, 3, 5.0f, 1.1f, 0f, TaskKind.ZoneNoBuoys),
+                L(1, 4, 6.2f, 1.0f, 1.2f, TaskKind.CleanTurns, 2.5f),
 
-                L(2, 0, 4.5f, 1.2f, 0f, TaskKind.Turns, 2f),
+                L(2, 0, 3.2f, 1.2f, 0f, TaskKind.Turns, 1f),
                 L(2, 1, 5.0f, 1.1f, 0f, TaskKind.CannonballInZone),
-                L(2, 1, 6.5f, 1.0f, 1.0f, TaskKind.CleanTurns, 2.5f),
-                L(2, 2, 5.5f, 1.0f, 0f, TaskKind.Turns, 3f),
-                L(2, 2, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye)
+                L(2, 2, 5.6f, 1.0f, 1.0f, TaskKind.CleanTurns, 2.5f),
+                L(2, 3, 6.0f, 1.0f, 0f, TaskKind.Turns, 3f),
+                L(2, 4, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye)
             };
 
             // Keep tuned thresholds for levels whose layout did not change.
@@ -740,9 +760,12 @@ namespace JumpGame.EditorTools
                 var shadow = rt.gameObject.AddComponent<Shadow>();
                 shadow.effectColor = new Color(0.1f, 0.13f, 0.25f, 0.5f);
                 shadow.effectDistance = new Vector2(0f, -5f);
+                rt.gameObject.AddComponent<ButtonPop>();
                 var b = rt.gameObject.AddComponent<Button>();
                 var colors = b.colors;
                 colors.pressedColor = new Color(0.85f, 0.85f, 0.85f);
+                colors.highlightedColor = new Color(1.06f, 1.06f, 1.06f);
+                colors.fadeDuration = 0.12f;
                 b.colors = colors;
                 var t = Label("Label", rt, new Vector2(0.5f, 0.5f), Vector2.zero, size, fontSize, TextAnchor.MiddleCenter);
                 t.text = label;

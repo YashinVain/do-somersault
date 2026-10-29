@@ -12,16 +12,17 @@ namespace JumpGame
         [SerializeField] GameFlow flow;
         [SerializeField] Diver diver;
         [SerializeField] DiveCamera diveCam;
-        [SerializeField] GameObject hud;
+        [SerializeField] UiPanel hud;
+        [SerializeField] ScreenCurtain curtain;
         [SerializeField] Button menuButton;
 
         [Header("Title")]
-        [SerializeField] GameObject titlePanel;
+        [SerializeField] UiPanel titlePanel;
         [SerializeField] Button playButton;
         [SerializeField] Text titleMedals;
 
         [Header("Map UI")]
-        [SerializeField] GameObject mapPanel;
+        [SerializeField] UiPanel mapPanel;
         [SerializeField] Text locationName;
         [SerializeField] Text locationInfo;
         [SerializeField] GameObject card;
@@ -48,10 +49,14 @@ namespace JumpGame
         [SerializeField] float swaySpeed = 0.18f;
         [SerializeField] float flySharpness = 2.5f;
 
+        enum Mode { Title, Map }
+
         readonly List<MapMarker> markers = new List<MapMarker>();
         Camera cam;
         bool open;
+        Mode mode;
         int viewing;
+        int resume = -1;
         float time;
 
         void Start()
@@ -63,16 +68,25 @@ namespace JumpGame
             markerTemplate.gameObject.SetActive(false);
             if (flow.Saved == null) flow.Begin();
             ShowTitle();
+            if (curtain != null) curtain.Reveal();
         }
 
+        // The title is the real location with the diver on its highest spot, seen from below.
         public void ShowTitle()
         {
-            Enter();
-            titlePanel.SetActive(true);
-            mapPanel.SetActive(false);
+            Enter(false);
+            mode = Mode.Title;
+            viewing = flow.Level.location;
+
+            // Remember where the player was; the hero shot needs the diver up on the top spot.
+            if (resume < 0) resume = flow.Index;
+            var list = flow.LevelsIn(viewing);
+            flow.Load(list[list.Count - 1]);
+
+            titlePanel.Show(true);
+            mapPanel.Show(false, true);
             arrows.gameObject.SetActive(false);
             ShowMarkers(false);
-            viewing = flow.Level.location;
             SnapCamera();
 
             if (titleMedals != null)
@@ -85,38 +99,48 @@ namespace JumpGame
 
         public void ShowMap()
         {
-            bool fromGame = !open;
-            Enter();
-            titlePanel.SetActive(false);
-            mapPanel.SetActive(true);
-            arrows.gameObject.SetActive(true);
-            View(flow.Level.location, true);
-            if (fromGame) SnapCamera();
+            if (curtain != null) curtain.Dip(EnterMap);
+            else EnterMap();
         }
 
-        void Enter()
+        void EnterMap()
+        {
+            if (mode == Mode.Title && resume >= 0) flow.Load(resume);
+            resume = -1;
+
+            Enter(true);
+            mode = Mode.Map;
+            titlePanel.Show(false, true);
+            mapPanel.Show(true);
+            arrows.gameObject.SetActive(true);
+            View(flow.Level.location, true);
+            SnapCamera();
+        }
+
+        // On the map every location block is shown over a plain colour; the title and the game use the sky.
+        void Enter(bool map)
         {
             if (cam == null) cam = diveCam.GetComponent<Camera>();
             if (!open) flow.Retry();
             open = true;
             diveCam.enabled = false;
             diver.AcceptInput = false;
-            hud.SetActive(false);
-            RenderSettings.fog = false;
-            cam.clearFlags = CameraClearFlags.SolidColor;
+            hud.Show(false, true);
+            RenderSettings.fog = !map;
+            cam.clearFlags = map ? CameraClearFlags.SolidColor : CameraClearFlags.Skybox;
             cam.backgroundColor = backdrop;
-            flow.ShowAllSites(true);
+            flow.ShowAllSites(map);
         }
 
         void Play()
         {
             if (!flow.IsOpen(flow.Index)) return;
             open = false;
-            titlePanel.SetActive(false);
-            mapPanel.SetActive(false);
+            mapPanel.Show(false);
+            titlePanel.Show(false, true);
             arrows.gameObject.SetActive(false);
             ShowMarkers(false);
-            hud.SetActive(true);
+            hud.Show(true);
             RenderSettings.fog = true;
             cam.clearFlags = CameraClearFlags.Skybox;
             flow.ShowAllSites(false);
@@ -127,11 +151,13 @@ namespace JumpGame
 
         void View(int location, bool keepLevel)
         {
+            int previous = viewing;
             viewing = Mathf.Clamp(location, 0, flow.LocationCount - 1);
             if (!keepLevel || flow.Level.location != viewing)
                 flow.Load(flow.LastOpenIn(viewing));
             BuildMarkers();
             Refresh();
+            if (viewing != previous) mapPanel.Replay();
         }
 
         void BuildMarkers()
@@ -140,21 +166,44 @@ namespace JumpGame
             while (markers.Count < levels.Count)
                 markers.Add(Instantiate(markerTemplate, markerTemplate.transform.parent));
 
-            // The landing spots sit close together compared with the whole block, so the buoys line up
-            // in a row above the location, facing the map camera, each tied to its own spot by a pole.
+            // Each buoy hovers right over the place its dive starts from, so the numbers climb with the heights.
+            // Spots that are close on screen push their buoys apart sideways; the pole still ends at the spot.
             var site = flow.Site(viewing);
             site.MapPose(0f, out var camPos, out var look);
-            var right = Vector3.Cross(Vector3.up, (look - camPos).normalized).normalized;
+            var view = Quaternion.LookRotation(look - camPos);
+            Vector3 right = view * Vector3.right, up = view * Vector3.up;
             float size = MarkerSize();
+            float gap = size * 1.5f;
 
-            Vector3 middle = Vector3.zero;
-            float tallest = 0f;
-            foreach (int l in levels)
+            var spots = new Vector3[levels.Count];
+            var at = new Vector3[levels.Count];
+            for (int i = 0; i < levels.Count; i++)
             {
-                middle += flow.ZoneCenterOf(l);
-                tallest = Mathf.Max(tallest, flow.HeightOf(l));
+                spots[i] = flow.SpotOf(levels[i]);
+                at[i] = spots[i] + Vector3.up * size * 1.2f;
             }
-            middle /= levels.Count;
+
+            // Separate overlapping buoys in the screen plane only, leaving their depth alone.
+            for (int pass = 0; pass < 60; pass++)
+            {
+                bool moved = false;
+                for (int a = 0; a < at.Length; a++)
+                    for (int b = a + 1; b < at.Length; b++)
+                    {
+                        Vector3 d = at[b] - at[a];
+                        Vector2 flat = new Vector2(Vector3.Dot(d, right), Vector3.Dot(d, up));
+                        float len = flat.magnitude;
+                        if (len >= gap) continue;
+                        // Taller one goes up, lower one goes down; flat ties split sideways.
+                        Vector2 dir = len > 0.001f ? flat / len : Vector2.right;
+                        float push = (gap - len) * 0.5f;
+                        Vector3 world = (right * dir.x + up * dir.y) * push;
+                        at[a] -= world;
+                        at[b] += world;
+                        moved = true;
+                    }
+                if (!moved) break;
+            }
 
             for (int i = 0; i < markers.Count; i++)
             {
@@ -163,11 +212,8 @@ namespace JumpGame
                 m.gameObject.SetActive(used);
                 if (!used) continue;
 
-                int level = levels[i];
-                float across = (i - (levels.Count - 1) * 0.5f) * size * 1.35f;
-                float lift = tallest + size * (markerHeight * 0.6f) + (i % 2) * size * 0.35f;
-                m.transform.position = middle + Vector3.up * lift + right * across;
-                m.PointTo(flow.ZoneCenterOf(level), size * 0.045f);
+                m.transform.position = at[i];
+                m.PointTo(spots[i], size * 0.05f);
             }
         }
 
@@ -237,16 +283,43 @@ namespace JumpGame
 
             MoveCamera(Time.unscaledDeltaTime);
             FaceCamera();
-            if (mapPanel.activeSelf) HandleTap();
+            if (mode == Mode.Map && mapPanel.Visible) HandleTap();
         }
 
         void SnapCamera() => MoveCamera(-1f);
 
+        // Low in front of the highest platform looking up at the diver, who stands in the right part of the frame
+        // so the left stays free for the menu. It drifts slowly round him.
+        void TitlePose(out Vector3 pos, out Quaternion rot)
+        {
+            var list = flow.LevelsIn(viewing);
+            int top = list[list.Count - 1];
+            var edge = flow.EdgeOf(top);
+            Vector3 subject = edge.position + Vector3.up * 1f;
+
+            Vector3 offset = edge.forward * 7.5f + edge.right * 3.5f;
+            offset = Quaternion.AngleAxis(Mathf.Sin(time * 0.12f) * 9f, Vector3.up) * offset;
+            pos = new Vector3(subject.x + offset.x, Mathf.Max(1.8f, edge.position.y - 5f), subject.z + offset.z);
+
+            Vector3 toward = (subject - pos).normalized;
+            Vector3 camRight = Vector3.Cross(Vector3.up, toward).normalized;
+            rot = Quaternion.LookRotation(subject - camRight * 2.6f - pos);
+        }
+
         // Hover over the location with a slow sideways sway; dt < 0 jumps straight there.
         void MoveCamera(float dt)
         {
-            flow.Site(viewing).MapPose(Mathf.Sin(time * swaySpeed) * swayAngle, out var pos, out var look);
-            var rot = Quaternion.LookRotation(look - pos);
+            Vector3 pos;
+            Quaternion rot;
+            if (mode == Mode.Title)
+            {
+                TitlePose(out pos, out rot);
+            }
+            else
+            {
+                flow.Site(viewing).MapPose(Mathf.Sin(time * swaySpeed) * swayAngle, out pos, out var look);
+                rot = Quaternion.LookRotation(look - pos);
+            }
             if (dt < 0f)
             {
                 cam.transform.SetPositionAndRotation(pos, rot);
@@ -313,8 +386,15 @@ namespace JumpGame
                 Play();
                 return;
             }
-            if (screen == 0) ShowTitle();
-            else ShowMap();
+            if (screen == 0)
+            {
+                ShowTitle();
+            }
+            else
+            {
+                resume = -1;
+                EnterMap();
+            }
             SnapCamera();
             FaceCamera();
         }

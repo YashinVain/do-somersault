@@ -189,6 +189,24 @@ namespace JumpGame.EditorTools
                 },
                 new Scenario
                 {
+                    name = "aqueduct", level = 9,
+                    held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
+                    frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
+                },
+                new Scenario
+                {
+                    name = "roof", level = 12,
+                    held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
+                    frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
+                },
+                new Scenario
+                {
+                    name = "yacht", level = 10,
+                    held = t => t < 0.8f,
+                    frames = new[] { 0.5f, 0.9f, 1.2f, 1.5f, 1.8f, 2.1f, 2.4f, 2.7f, 3.0f, 3.3f, 3.6f, 4.0f }
+                },
+                new Scenario
+                {
                     name = "cliff", level = 13,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.6f),
                     frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
@@ -308,13 +326,14 @@ namespace JumpGame.EditorTools
 
         static void CaptureLevels()
         {
-            var sheet = new Texture2D(FrameW * 2, FrameH * 2, TextureFormat.RGB24, false);
-            int[] levels = { 2, 6, 9, 13 };
-            for (int i = 0; i < levels.Length; i++)
+            // The view from every jump spot, five per location.
+            int count = flow.Count, rows = Mathf.CeilToInt(count / (float)Columns);
+            var sheet = new Texture2D(FrameW * Columns, FrameH * rows, TextureFormat.RGB24, false);
+            for (int i = 0; i < count; i++)
             {
-                flow.Load(levels[i]);
+                flow.Load(i);
                 follow.Snap();
-                Render(FrameW, FrameH, sheet, (i % 2) * FrameW, (1 - i / 2) * FrameH);
+                Render(FrameW, FrameH, sheet, (i % Columns) * FrameW, (rows - 1 - i / Columns) * FrameH);
             }
             File.WriteAllBytes("Logs/capture_levels.png", sheet.EncodeToPNG());
             UnityEngine.Object.DestroyImmediate(sheet);

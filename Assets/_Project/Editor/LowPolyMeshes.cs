@@ -205,6 +205,128 @@ namespace JumpGame.EditorTools
             return mesh;
         }
 
+        // Faceted ground over a rectangle centred on the origin. Each triangle goes into a submesh by its average
+        // height (lake bed, sand, grass); a fourth submesh is the soil skirt that closes the sides down to skirtBottom.
+        public static Mesh Terrain(string name, float sizeX, float sizeZ, int cells, System.Func<float, float, float> height,
+                                   float sandBelow, float grassAbove, float skirtBottom)
+        {
+            int n = cells + 1;
+            var grid = new Vector3[n * n];
+            for (int j = 0; j < n; j++)
+                for (int i = 0; i < n; i++)
+                {
+                    float x = (i / (float)cells - 0.5f) * sizeX, z = (j / (float)cells - 0.5f) * sizeZ;
+                    grid[j * n + i] = new Vector3(x, height(x, z), z);
+                }
+
+            var verts = new List<Vector3>();
+            var subs = new List<List<int>> { new(), new(), new(), new() };
+            void Tri(Vector3 a, Vector3 b, Vector3 c, int forced = -1)
+            {
+                float h = (a.y + b.y + c.y) / 3f;
+                int s = forced >= 0 ? forced : h < sandBelow ? 0 : h < grassAbove ? 1 : 2;
+                subs[s].Add(verts.Count); verts.Add(a);
+                subs[s].Add(verts.Count); verts.Add(b);
+                subs[s].Add(verts.Count); verts.Add(c);
+            }
+            Vector3 G(int i, int j) => grid[j * n + i];
+
+            // Same winding as Quad: seen from above, x right and z up.
+            for (int j = 0; j < cells; j++)
+                for (int i = 0; i < cells; i++)
+                {
+                    // Alternate the diagonal so the facets don't line up in stripes.
+                    if ((i + j) % 2 == 0)
+                    {
+                        Tri(G(i, j), G(i, j + 1), G(i + 1, j + 1));
+                        Tri(G(i, j), G(i + 1, j + 1), G(i + 1, j));
+                    }
+                    else
+                    {
+                        Tri(G(i, j), G(i, j + 1), G(i + 1, j));
+                        Tri(G(i + 1, j), G(i, j + 1), G(i + 1, j + 1));
+                    }
+                }
+
+            // Skirt: each edge segment dropped to skirtBottom, facing outwards.
+            // a is the left end and b the right end as seen from outside the block.
+            void Skirt(Vector3 a, Vector3 b)
+            {
+                var a0 = new Vector3(a.x, skirtBottom, a.z);
+                var b0 = new Vector3(b.x, skirtBottom, b.z);
+                Tri(a0, a, b, 3);
+                Tri(a0, b, b0, 3);
+            }
+            for (int i = 0; i < cells; i++)
+            {
+                Skirt(G(i, 0), G(i + 1, 0));                 // -z side
+                Skirt(G(i + 1, cells), G(i, cells));         // +z side
+                Skirt(G(0, i + 1), G(0, i));                 // -x side
+                Skirt(G(cells, i), G(cells, i + 1));         // +x side
+            }
+
+            Directory.CreateDirectory(Dir);
+            string path = $"{Dir}/{name}.asset";
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            bool isNew = mesh == null;
+            if (isNew) mesh = new Mesh();
+            mesh.Clear();
+            mesh.name = name;
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.SetVertices(verts);
+            mesh.subMeshCount = subs.Count;
+            for (int s = 0; s < subs.Count; s++) mesh.SetTriangles(subs[s], s);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            if (isNew) AssetDatabase.CreateAsset(mesh, path);
+            else EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // One bay of a stone viaduct running along Z: a solid slab of width `width` (X) and length `length` (Z)
+        // from baseY up to `top`, with a round arch cut through it. The arch springs at springY and has the given radius.
+        public static Mesh ViaductBay(string name, float width, float length, float baseY, float top, float springY, float radius, int steps = 10)
+        {
+            var verts = new List<Vector3>();
+            float hw = width * 0.5f, hl = length * 0.5f;
+
+            // Triangles are wound so that they face along n, whatever order the corners come in.
+            void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n)
+            {
+                if (Vector3.Dot(Vector3.Cross(b - a, c - a), n) < 0f) { Tri(verts, a, c, b); Tri(verts, a, d, c); }
+                else { Tri(verts, a, b, c); Tri(verts, a, c, d); }
+            }
+            float Arch(float z) => springY + Mathf.Sqrt(Mathf.Max(0f, radius * radius - z * z));
+
+            // Sample positions across the length: both piers and the opening between them.
+            var zs = new List<float> { -hl };
+            for (int i = 0; i <= steps; i++) zs.Add(Mathf.Lerp(-radius, radius, i / (float)steps));
+            zs.Add(hl);
+
+            for (int i = 0; i + 1 < zs.Count; i++)
+            {
+                float z0 = zs[i], z1 = zs[i + 1];
+                bool opening = z0 >= -radius - 0.001f && z1 <= radius + 0.001f;
+                float y0 = opening ? Arch(z0) : baseY, y1 = opening ? Arch(z1) : baseY;
+
+                foreach (float sx in new[] { -hw, hw })
+                    Quad(new Vector3(sx, y0, z0), new Vector3(sx, top, z0), new Vector3(sx, top, z1), new Vector3(sx, y1, z1), new Vector3(sx, 0f, 0f));
+
+                Quad(new Vector3(-hw, top, z0), new Vector3(-hw, top, z1), new Vector3(hw, top, z1), new Vector3(hw, top, z0), Vector3.up);
+
+                if (opening)
+                {
+                    var down = new Vector3(0f, -(z1 - z0), y1 - y0);
+                    Quad(new Vector3(-hw, y0, z0), new Vector3(hw, y0, z0), new Vector3(hw, y1, z1), new Vector3(-hw, y1, z1), down);
+                }
+            }
+
+            // The straight sides of the opening, below where the arch springs.
+            Quad(new Vector3(-hw, baseY, -radius), new Vector3(hw, baseY, -radius), new Vector3(hw, springY, -radius), new Vector3(-hw, springY, -radius), Vector3.forward);
+            Quad(new Vector3(-hw, baseY, radius), new Vector3(hw, baseY, radius), new Vector3(hw, springY, radius), new Vector3(-hw, springY, radius), Vector3.back);
+            return Save(name, verts);
+        }
+
         // Triangle flag hanging down from its top edge, visible from both sides.
         public static Mesh Pennant(string name, float width, float height)
         {
