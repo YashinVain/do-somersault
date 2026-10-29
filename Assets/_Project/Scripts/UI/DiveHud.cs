@@ -227,7 +227,9 @@ namespace JumpGame
             else resultTask.text = "Задание: " + flow.Level.TaskText;
             resultTask.color = outcome.taskDone ? TaskDone : new Color(1f, 1f, 1f, 0.75f);
 
-            resultCoins.text = outcome.coins > 0 ? "+" + outcome.coins + " монет" : "";
+            string coinsLine = outcome.coins > 0 ? "+" + outcome.coins + " монет" : "";
+            if (!string.IsNullOrEmpty(r.note)) coinsLine += (coinsLine.Length > 0 ? "   ·   " : "") + r.note;
+            resultCoins.text = coinsLine;
 
             bool summary = !flow.CanGoNext && flow.AtLocationEnd && flow.Saved.stars[flow.Index] > 0;
             nextLevelButton.gameObject.SetActive(flow.CanGoNext || summary);

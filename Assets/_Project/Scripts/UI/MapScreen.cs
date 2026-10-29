@@ -112,6 +112,7 @@ namespace JumpGame
 
         public void ShowMap()
         {
+            Sounds.Play(Cue.Whoosh, 0.7f);
             if (curtain != null) curtain.Dip(EnterMap);
             else EnterMap();
         }
@@ -159,11 +160,13 @@ namespace JumpGame
             flow.ShowAllSites(false);
             diveCam.enabled = true;
             diveCam.BlendFromCurrent();
+            Sounds.Play(Cue.Whoosh, 0.6f);
             diver.AcceptInput = true;
         }
 
         void BackToTitle()
         {
+            Sounds.Play(Cue.Whoosh, 0.7f);
             if (curtain != null) curtain.Dip(ShowTitle);
             else ShowTitle();
         }
@@ -172,6 +175,8 @@ namespace JumpGame
         {
             if (flow.BuyLocation(viewing))
             {
+                Sounds.Play(Cue.Coins);
+                Sounds.Play(Cue.Confirm, 0.7f);
                 flow.Load(flow.LastOpenIn(viewing));
                 BuildMarkers();
                 Refresh();
@@ -228,6 +233,7 @@ namespace JumpGame
             int next = flow.NextLocation;
             if (next < 0) summaryNextLabel.text = "К карте";
             else summaryNextLabel.text = flow.IsPaid(next) && !flow.Owns(next) ? "Дальше" : "Следующая локация";
+            Sounds.Play(Cue.Open);
             summaryPanel.Show(true);
         }
 
@@ -235,6 +241,7 @@ namespace JumpGame
         void GoToNextLocation()
         {
             int from = flow.Level.location, next = flow.NextLocation;
+            Sounds.Play(Cue.Whoosh);
             summaryPanel.Show(false);
             void Swap()
             {
@@ -482,13 +489,14 @@ namespace JumpGame
 
             if (!Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit, 300f)) return;
 
-            if (hit.transform.IsChildOf(arrowLeft)) View(viewing - 1, false);
-            else if (hit.transform.IsChildOf(arrowRight)) View(viewing + 1, false);
+            if (hit.transform.IsChildOf(arrowLeft)) { Sounds.Play(Cue.Switch); View(viewing - 1, false); }
+            else if (hit.transform.IsChildOf(arrowRight)) { Sounds.Play(Cue.Switch); View(viewing + 1, false); }
             else
             {
                 var marker = hit.transform.GetComponentInParent<MapMarker>();
                 if (marker != null && flow.IsOpen(marker.Level))
                 {
+                    Sounds.Play(Cue.Select);
                     flow.Load(marker.Level);
                     Refresh();
                 }

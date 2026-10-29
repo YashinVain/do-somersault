@@ -25,6 +25,8 @@ namespace JumpGame
         public bool usedTuck;
         public float multiplier;
         public int score;
+        // A line about the character's twist on this dive, shown on the result screen.
+        public string note;
 
         public bool Failed => entry >= EntryKind.BellyFlop;
 
@@ -55,6 +57,31 @@ namespace JumpGame
 
     public static class DiveScoring
     {
+        // Applies the character's perk to a finished dive: bonuses, a consolation score for failures, a note for the screen.
+        public static void ApplyPerk(ref DiveResult r, Perk perk)
+        {
+            if (perk == null || perk == Perk.None) return;
+
+            if (r.Failed)
+            {
+                if (perk.failScore > 0 && r.entry != EntryKind.OnTower)
+                {
+                    r.score = perk.failScore;
+                    r.note = "Не больно!";
+                }
+            }
+            else
+            {
+                float m = r.multiplier;
+                if (r.entry == EntryKind.HeadClean) r.score += Mathf.RoundToInt(perk.headClean * m);
+                if (r.entry == EntryKind.FeetClean) r.score += Mathf.RoundToInt(perk.feetClean * m);
+                if (r.bullseye) r.score += Mathf.RoundToInt(perk.bullseye * m);
+                if (r.entry == EntryKind.Cannonball) r.score = Mathf.RoundToInt(r.score * perk.cannonball);
+                if (perk.splash > 1.5f && r.entry == EntryKind.Cannonball) r.note = "Плюх!";
+            }
+            if (perk.breaks) r.note = "Робот замкнул и сломался";
+        }
+
         public const int PointsPerHalfTurn = 100;
         public const int CenterBonus = 100;
 

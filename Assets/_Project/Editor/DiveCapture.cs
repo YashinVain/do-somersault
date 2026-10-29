@@ -20,6 +20,7 @@ namespace JumpGame.EditorTools
             public string name;
             public int level;
             public Func<float, bool> held;
+            public int skin;
             public float[] frames;
         }
 
@@ -221,6 +222,18 @@ namespace JumpGame.EditorTools
                 },
                 new Scenario
                 {
+                    name = "fat", level = 2, skin = 2,
+                    held = t => t < 0.9f || (t > 1.02f && t < 1.9f),
+                    frames = new[] { 1.8f, 2.0f, 2.2f, 2.4f, 2.5f, 2.6f, 2.7f, 2.8f, 3.0f, 3.2f, 3.5f, 3.9f }
+                },
+                new Scenario
+                {
+                    name = "robot", level = 2, skin = 9,
+                    held = t => t < 0.9f,
+                    frames = new[] { 1.4f, 1.6f, 1.7f, 1.8f, 1.9f, 2.0f, 2.1f, 2.3f, 2.5f, 2.8f, 3.2f, 3.8f }
+                },
+                new Scenario
+                {
                     name = "aqueduct", level = 9,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
                     frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
@@ -246,7 +259,12 @@ namespace JumpGame.EditorTools
             };
 
             foreach (var s in scenarios)
+            {
+                if (s.skin > 0 && !flow.OwnsSkin(s.skin)) flow.BuySkin(s.skin);
+                else flow.SelectSkin(s.skin);
                 RunScenario(s);
+            }
+            flow.SelectSkin(0);
 
             // Find any dive that lands in the very centre, then film it to check the close-up.
             flow.Load(2);

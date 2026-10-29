@@ -73,6 +73,24 @@ namespace JumpGame
             Step(0f);
         }
 
+        // A few hot sparks over the water, for a robot that has just short-circuited.
+        public void Sparks(Vector3 point)
+        {
+            if (crown == null) return;
+            for (int i = 0; i < 5; i++)
+            {
+                var p = new ParticleSystem.EmitParams
+                {
+                    position = point,
+                    velocity = new Vector3(Random.Range(-1.6f, 1.6f), Random.Range(1.5f, 3.6f), Random.Range(-1.6f, 1.6f)),
+                    startSize = Random.Range(0.04f, 0.08f),
+                    startLifetime = Random.Range(0.35f, 0.7f),
+                    startColor = i % 2 == 0 ? new Color(1f, 0.85f, 0.35f) : new Color(1f, 1f, 0.8f)
+                };
+                crown.Emit(p, 1);
+            }
+        }
+
         void Update()
         {
             if (Application.isPlaying) Step(Time.deltaTime);

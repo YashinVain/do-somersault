@@ -155,7 +155,11 @@ namespace JumpGame
         }
 
         // Dresses the diver in the chosen character, or in any other one for the shop's preview.
-        public void ApplySkin() => ShowSkin(progress.skin);
+        public void ApplySkin()
+        {
+            ShowSkin(progress.skin);
+            diver.Perk = Skins.All[progress.skin].perk;
+        }
 
         public void ShowSkin(int skin)
         {
@@ -367,6 +371,7 @@ namespace JumpGame
             int coins = r.score / CoinsPerPoint;
             for (int medal = before; medal < o.stars; medal++) coins += MedalBonus[medal];
             if (o.taskJustDone) coins += TaskBonus;
+            coins = Mathf.RoundToInt(coins * Skins.All[progress.skin].perk.coins);
             o.coins = coins;
             progress.coins += coins;
 

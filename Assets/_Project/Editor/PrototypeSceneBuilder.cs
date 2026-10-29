@@ -79,6 +79,8 @@ namespace JumpGame.EditorTools
             Link(flow, "zone", zone);
             Link(flow, "cam", cam);
 
+            BuildSounds(diver, flow);
+
             var juice = flow.gameObject.AddComponent<DiveJuice>();
             Link(juice, "diver", diver);
             Link(juice, "view", cam);
@@ -1018,8 +1020,8 @@ namespace JumpGame.EditorTools
                 Object.DestroyImmediate(cardTexts[i].GetComponent<Shadow>());
             }
 
-            var task = Label("Task", panel, center, new Vector2(0f, -72f), new Vector2(1000f, 40f), 26, TextAnchor.MiddleCenter);
-            var coinsEarned = Label("CoinsEarned", panel, center, new Vector2(-190f, -62f), new Vector2(260f, 34f), 24, TextAnchor.MiddleCenter);
+            var task = Label("Task", panel, center, new Vector2(0f, -92f), new Vector2(1000f, 40f), 26, TextAnchor.MiddleCenter);
+            var coinsEarned = Label("CoinsEarned", panel, center, new Vector2(0f, -52f), new Vector2(900f, 34f), 24, TextAnchor.MiddleCenter);
             coinsEarned.color = new Color(1f, 0.82f, 0.3f);
             var retry = Btn("Retry", panel, center, new Vector2(-130f, -150f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
             var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -150f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);

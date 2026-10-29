@@ -11,7 +11,7 @@ namespace JumpGame
         [SerializeField] UiPanel panel;
         [SerializeField] UiPanel titlePanel;
         [SerializeField] Button openButton, backButton, prevButton, nextButton, actionButton;
-        [SerializeField] Text nameText, blurbText, statusText, counterText, coinsText, actionLabel;
+        [SerializeField] Text nameText, blurbText, perkText, statusText, counterText, coinsText, actionLabel;
 
         int shown;
 
@@ -52,13 +52,22 @@ namespace JumpGame
         {
             int n = Skins.All.Length;
             shown = (shown + d + n) % n;
+            Sounds.Play(Cue.Select, 0.8f);
             Refresh();
         }
 
         void Act()
         {
-            if (flow.OwnsSkin(shown)) flow.SelectSkin(shown);
-            else flow.BuySkin(shown);
+            if (flow.OwnsSkin(shown))
+            {
+                flow.SelectSkin(shown);
+                Sounds.Play(Cue.Confirm);
+            }
+            else if (flow.BuySkin(shown))
+            {
+                Sounds.Play(Cue.Coins);
+                Sounds.Play(Cue.Confirm, 0.7f);
+            }
             Refresh();
         }
 
@@ -80,6 +89,7 @@ namespace JumpGame
             bool owned = flow.OwnsSkin(shown), selected = shown == flow.SkinIndex;
             nameText.text = s.title;
             blurbText.text = s.blurb;
+            perkText.text = s.perk == Perk.None ? "" : "<b>" + s.perk.title + "</b>" + '\n' + s.perk.text;
             counterText.text = $"{shown + 1} / {Skins.All.Length}";
             coinsText.text = flow.Coins.ToString();
 

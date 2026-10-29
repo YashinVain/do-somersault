@@ -60,6 +60,7 @@ namespace JumpGame.EditorTools
 
             // Back to the title, and the coin count.
             x.back = ui.Btn("Back", mapPanel, topLeft, new Vector2(24f, -20f), new Vector2(150f, 54f), "Меню", "#2BA39C", 26);
+            SoundButton(ui, mapPanel, topLeft, new Vector2(186f, -20f), new Vector2(190f, 54f), "#34495E", false);
             var coinDot = ui.Rect("CoinDot", mapPanel, topRight, new Vector2(-24f, -30f), new Vector2(26f, 26f)).gameObject.AddComponent<Image>();
             coinDot.sprite = ui.knob;
             coinDot.color = new Color(1f, 0.8f, 0.26f);
@@ -142,31 +143,36 @@ namespace JumpGame.EditorTools
             var blurb = LeftText("Blurb", new Vector2(98f, 80f), new Vector2(430f, 90f), 26, "#C8D2DB", FontStyle.Normal, out var blurbText);
             blurbText.horizontalOverflow = HorizontalWrapMode.Wrap;
             blurbText.alignment = TextAnchor.UpperLeft;
-            var status = LeftText("Status", new Vector2(98f, -20f), new Vector2(500f, 44f), 34, "#FFD24A", FontStyle.Bold, out var statusText);
+            var perk = LeftText("Perk", new Vector2(98f, 6f), new Vector2(430f, 100f), 22, "#7FD3B5", FontStyle.Normal, out var perkText);
+            perkText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            perkText.alignment = TextAnchor.UpperLeft;
+            perkText.rectTransform.pivot = new Vector2(0f, 1f);
+            perkText.rectTransform.anchoredPosition = new Vector2(98f, 40f);
+            var status = LeftText("Status", new Vector2(98f, -62f), new Vector2(500f, 44f), 34, "#FFD24A", FontStyle.Bold, out var statusText);
 
-            var action = ui.Btn("Action", rt, left, new Vector2(98f, -100f), new Vector2(300f, 76f), "Купить", "#EE6A55", 32);
+            var action = ui.Btn("Action", rt, left, new Vector2(98f, -128f), new Vector2(300f, 70f), "Купить", "#EE6A55", 32);
             var actionRt = (RectTransform)action.transform;
             actionRt.pivot = new Vector2(0f, 0.5f);
-            actionRt.anchoredPosition = new Vector2(98f, -100f);
+            actionRt.anchoredPosition = new Vector2(98f, -128f);
             Flatten(action);
 
-            var prev = ui.Btn("Prev", rt, left, new Vector2(98f, -196f), new Vector2(70f, 60f), "<", "#34495E", 32);
-            var next = ui.Btn("Next", rt, left, new Vector2(318f, -196f), new Vector2(70f, 60f), ">", "#34495E", 32);
+            var prev = ui.Btn("Prev", rt, left, new Vector2(98f, -212f), new Vector2(70f, 60f), "<", "#34495E", 32);
+            var next = ui.Btn("Next", rt, left, new Vector2(318f, -212f), new Vector2(70f, 60f), ">", "#34495E", 32);
             foreach (var b in new[] { prev, next })
             {
                 var brt = (RectTransform)b.transform;
                 brt.pivot = new Vector2(0f, 0.5f);
                 Flatten(b);
             }
-            ((RectTransform)prev.transform).anchoredPosition = new Vector2(98f, -196f);
-            ((RectTransform)next.transform).anchoredPosition = new Vector2(318f, -196f);
-            var counter = Flat(ui, "Counter", rt, left, new Vector2(243f, -196f), new Vector2(120f, 40f), 26, TextAnchor.MiddleCenter, "#C8D2DB");
+            ((RectTransform)prev.transform).anchoredPosition = new Vector2(98f, -212f);
+            ((RectTransform)next.transform).anchoredPosition = new Vector2(318f, -212f);
+            var counter = Flat(ui, "Counter", rt, left, new Vector2(243f, -212f), new Vector2(120f, 40f), 26, TextAnchor.MiddleCenter, "#C8D2DB");
             counter.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            counter.rectTransform.anchoredPosition = new Vector2(243f, -196f);
+            counter.rectTransform.anchoredPosition = new Vector2(243f, -212f);
 
-            var back = ui.Btn("Back", rt, left, new Vector2(98f, -270f), new Vector2(180f, 58f), "Назад", "#2BA39C", 26);
+            var back = ui.Btn("Back", rt, left, new Vector2(98f, -282f), new Vector2(180f, 58f), "Назад", "#2BA39C", 26);
             ((RectTransform)back.transform).pivot = new Vector2(0f, 0.5f);
-            ((RectTransform)back.transform).anchoredPosition = new Vector2(98f, -270f);
+            ((RectTransform)back.transform).anchoredPosition = new Vector2(98f, -282f);
             Flatten(back);
 
             var coinDot = ui.Rect("CoinDot", rt, topRight, new Vector2(-24f, -30f), new Vector2(26f, 26f)).gameObject.AddComponent<Image>();
@@ -177,7 +183,7 @@ namespace JumpGame.EditorTools
 
             var shop = ui.canvas.gameObject.AddComponent<ShopScreen>();
             var panel = rt.gameObject.AddComponent<UiPanel>();
-            LinkArray(panel, "staggered", new Object[] { heading, title, blurb, status, actionRt, prev.transform, next.transform, counter.rectTransform, back.transform });
+            LinkArray(panel, "staggered", new Object[] { heading, title, blurb, perk, status, actionRt, prev.transform, next.transform, counter.rectTransform, back.transform });
             Link(shop, "flow", flow);
             Link(shop, "panel", panel);
             Link(shop, "titlePanel", titlePanel);
@@ -188,6 +194,7 @@ namespace JumpGame.EditorTools
             Link(shop, "actionButton", action);
             Link(shop, "nameText", nameText);
             Link(shop, "blurbText", blurbText);
+            Link(shop, "perkText", perkText);
             Link(shop, "statusText", statusText);
             Link(shop, "counterText", counter);
             Link(shop, "coinsText", coins);

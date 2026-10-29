@@ -508,8 +508,12 @@ namespace JumpGame.EditorTools
 
             var medals = Plain("Medals", new Vector2(100f, -196f), new Vector2(620f, 34f), 22, "", "#8E9CAB", FontStyle.Normal);
 
+            var soundRt = SoundButton(ui, panelRt, left, new Vector2(98f, -262f), new Vector2(200f, 46f), "#34495E", true);
+            soundRt.pivot = new Vector2(0f, 0.5f);
+            soundRt.anchoredPosition = new Vector2(98f, -262f);
+
             var panel = panelRt.gameObject.AddComponent<UiPanel>();
-            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, shopRt, medals.rectTransform });
+            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, shopRt, medals.rectTransform, soundRt });
             return (panel, play, medals);
         }
 

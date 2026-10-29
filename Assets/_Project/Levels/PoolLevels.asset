@@ -29,8 +29,8 @@ MonoBehaviour:
     zoneRadius: 0.9
     zoneDrift: 0
     bronze: 200
-    silver: 350
-    gold: 550
+    silver: 400
+    gold: 600
     task: 0
     taskTurns: 0
   - location: 0
@@ -38,9 +38,9 @@ MonoBehaviour:
     zoneDistance: 3
     zoneRadius: 1.3
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 1
     taskTurns: 0
   - location: 0
@@ -48,9 +48,9 @@ MonoBehaviour:
     zoneDistance: 3.5
     zoneRadius: 1.2
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 2
     taskTurns: 1
   - location: 0
@@ -58,9 +58,9 @@ MonoBehaviour:
     zoneDistance: 4
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 350
-    silver: 700
-    gold: 1000
+    bronze: 400
+    silver: 750
+    gold: 1100
     task: 4
     taskTurns: 0
   - location: 0
@@ -69,8 +69,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 2
     taskTurns: 2
   - location: 1
@@ -78,9 +78,9 @@ MonoBehaviour:
     zoneDistance: 2.2
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 250
-    silver: 450
-    gold: 700
+    bronze: 300
+    silver: 550
+    gold: 800
     task: 6
     taskTurns: 0
   - location: 1
@@ -88,9 +88,9 @@ MonoBehaviour:
     zoneDistance: 3.8
     zoneRadius: 1.2
     zoneDrift: 0.9
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 7
     taskTurns: 0
   - location: 1
@@ -99,8 +99,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0
     bronze: 400
-    silver: 700
-    gold: 1050
+    silver: 750
+    gold: 1100
     task: 2
     taskTurns: 1.5
   - location: 1
@@ -109,8 +109,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 5
     taskTurns: 0
   - location: 1
@@ -119,8 +119,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 1.2
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 3
     taskTurns: 2.5
   - location: 2
@@ -128,9 +128,9 @@ MonoBehaviour:
     zoneDistance: 3.2
     zoneRadius: 1.2
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 2
     taskTurns: 1
   - location: 2
@@ -139,8 +139,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 4
     taskTurns: 0
   - location: 2
@@ -149,8 +149,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 1
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 3
     taskTurns: 2.5
   - location: 2
@@ -159,8 +159,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 2
     taskTurns: 3
   - location: 2
@@ -168,9 +168,9 @@ MonoBehaviour:
     zoneDistance: 7.5
     zoneRadius: 0.9
     zoneDrift: 1.3
-    bronze: 550
-    silver: 1000
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 7
     taskTurns: 0
   - location: 3
@@ -178,9 +178,9 @@ MonoBehaviour:
     zoneDistance: 2.6
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 250
-    silver: 500
-    gold: 750
+    bronze: 300
+    silver: 550
+    gold: 800
     task: 0
     taskTurns: 0
   - location: 3
@@ -189,8 +189,8 @@ MonoBehaviour:
     zoneRadius: 1.2
     zoneDrift: 0
     bronze: 400
-    silver: 700
-    gold: 1050
+    silver: 750
+    gold: 1100
     task: 2
     taskTurns: 1
   - location: 3
@@ -199,8 +199,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 4
     taskTurns: 0
   - location: 3
@@ -208,9 +208,9 @@ MonoBehaviour:
     zoneDistance: 6.8
     zoneRadius: 1
     zoneDrift: 1
-    bronze: 550
-    silver: 1000
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 3
     taskTurns: 2
   - location: 3
@@ -218,9 +218,9 @@ MonoBehaviour:
     zoneDistance: 8.6
     zoneRadius: 0.95
     zoneDrift: 0
-    bronze: 550
-    silver: 1050
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 7
     taskTurns: 0
   - location: 4
@@ -238,9 +238,9 @@ MonoBehaviour:
     zoneDistance: 4.8
     zoneRadius: 1.1
     zoneDrift: 0.8
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 5
     taskTurns: 0
   - location: 4
@@ -249,8 +249,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 6
     taskTurns: 0
   - location: 4
@@ -259,8 +259,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 1.1
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 3
     taskTurns: 2
   - location: 4
@@ -268,9 +268,9 @@ MonoBehaviour:
     zoneDistance: 7.8
     zoneRadius: 0.95
     zoneDrift: 0
-    bronze: 550
-    silver: 1000
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 2
     taskTurns: 3
   - location: 5
@@ -278,9 +278,9 @@ MonoBehaviour:
     zoneDistance: 2.4
     zoneRadius: 1
     zoneDrift: 0
-    bronze: 250
-    silver: 450
-    gold: 700
+    bronze: 300
+    silver: 550
+    gold: 800
     task: 0
     taskTurns: 0
   - location: 5
@@ -288,9 +288,9 @@ MonoBehaviour:
     zoneDistance: 4.4
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 2
     taskTurns: 1.5
   - location: 5
@@ -299,8 +299,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0.9
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 4
     taskTurns: 0
   - location: 5
@@ -309,8 +309,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0
     bronze: 500
-    silver: 900
-    gold: 1350
+    silver: 950
+    gold: 1400
     task: 3
     taskTurns: 2.5
   - location: 5
@@ -318,9 +318,9 @@ MonoBehaviour:
     zoneDistance: 8.2
     zoneRadius: 0.95
     zoneDrift: 1.2
-    bronze: 550
-    silver: 1050
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 7
     taskTurns: 0
   - location: 6
@@ -328,9 +328,9 @@ MonoBehaviour:
     zoneDistance: 2.8
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 2
     taskTurns: 1
   - location: 6
@@ -339,8 +339,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 400
-    silver: 700
-    gold: 1050
+    silver: 750
+    gold: 1100
     task: 1
     taskTurns: 0
   - location: 6
@@ -349,8 +349,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0.8
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 2
     taskTurns: 2
   - location: 6
@@ -358,9 +358,9 @@ MonoBehaviour:
     zoneDistance: 7.2
     zoneRadius: 1
     zoneDrift: 0
-    bronze: 550
-    silver: 1000
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 4
     taskTurns: 0
   - location: 6
@@ -368,9 +368,9 @@ MonoBehaviour:
     zoneDistance: 8.8
     zoneRadius: 0.95
     zoneDrift: 1.2
-    bronze: 550
-    silver: 1050
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 7
     taskTurns: 0
   - location: 7
@@ -378,9 +378,9 @@ MonoBehaviour:
     zoneDistance: 3.2
     zoneRadius: 1.1
     zoneDrift: 0
-    bronze: 300
-    silver: 600
-    gold: 850
+    bronze: 350
+    silver: 650
+    gold: 950
     task: 0
     taskTurns: 0
   - location: 7
@@ -389,8 +389,8 @@ MonoBehaviour:
     zoneRadius: 1.1
     zoneDrift: 0
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 3
     taskTurns: 1.5
   - location: 7
@@ -399,8 +399,8 @@ MonoBehaviour:
     zoneRadius: 1
     zoneDrift: 0.8
     bronze: 450
-    silver: 800
-    gold: 1200
+    silver: 850
+    gold: 1250
     task: 2
     taskTurns: 2.5
   - location: 7
@@ -408,9 +408,9 @@ MonoBehaviour:
     zoneDistance: 8
     zoneRadius: 1
     zoneDrift: 0
-    bronze: 550
-    silver: 1050
-    gold: 1500
+    bronze: 600
+    silver: 1100
+    gold: 1600
     task: 2
     taskTurns: 3
   - location: 7
@@ -418,8 +418,8 @@ MonoBehaviour:
     zoneDistance: 9.8
     zoneRadius: 0.9
     zoneDrift: 1
-    bronze: 650
-    silver: 1250
-    gold: 1800
+    bronze: 700
+    silver: 1300
+    gold: 1900
     task: 7
     taskTurns: 0

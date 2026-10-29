@@ -59,11 +59,18 @@ namespace JumpGame
         public Vector3 EntryPoint { get; private set; }
 
         public bool UsedTuck { get; private set; }
+        // The character's own twist on gravity, spin, splash and scoring; set by GameFlow.
+        public Perk Perk { get; set; } = Perk.None;
+        // A robot that short-circuited in the water.
+        public bool Broken { get; private set; }
         // Off while menus are open.
         public bool AcceptInput { get; set; } = true;
 
         public event Action<DiveResult> Entered;
         public event Action Restarted;
+        // The first press on the platform, and the moment the legs push off.
+        public event Action Crouched;
+        public event Action TookOff;
         // Number of full somersaults done so far in this dive.
         public event Action<int> TurnCompleted;
         // A real knock against the tower, with its strength in m/s.
@@ -85,6 +92,7 @@ namespace JumpGame
         bool hitBuoys;
         bool hitTower, stuck;
         float restTimer;
+        float faultTime, faultSparkTimer;
         bool wasHeld;
         bool initialized;
         readonly Vector3[] contacts = new Vector3[DiverPose.ContactCount];
@@ -132,6 +140,7 @@ namespace JumpGame
         void BeginCrouch()
         {
             Current = State.Crouching;
+            Crouched?.Invoke();
             holdTime = lean = leanVel = 0f;
             Charge = 0f;
             toePivot = transform.TransformPoint(pose.LocalToes());
@@ -147,7 +156,7 @@ namespace JumpGame
             pose.Step(dt);
 
             // Tipping over the edge speeds up on its own, so a long hold ends in a fall.
-            leanVel += (tipPush + tipGain * Mathf.Sin(lean * Mathf.Deg2Rad)) * dt;
+            leanVel += (tipPush + tipGain * Mathf.Sin(lean * Mathf.Deg2Rad)) * Perk.edge * dt;
             lean += leanVel * dt;
             Rotation = lean;
             PivotOnToes();
@@ -175,13 +184,16 @@ namespace JumpGame
             float forward = Mathf.Lerp(forwardSpeed.x, forwardSpeed.y, Charge) + leanForwardBonus * edge;
             float up = Mathf.Lerp(upSpeed.x, upSpeed.y, Charge) * (1f - 0.3f * edge);
 
+            forward *= Perk.jump;
+            up *= Perk.jump;
             velocity = startRotation * Vector3.forward * forward + Vector3.up * up;
             // takeoffSpin is what a straight body would turn at.
-            float spin = Mathf.Lerp(takeoffSpin.x, takeoffSpin.y, Charge) + leanVel;
+            float spin = (Mathf.Lerp(takeoffSpin.x, takeoffSpin.y, Charge) + leanVel) * Perk.spin;
 
             tuck = 0f;
             pose.JustLaunched = true;
             Launch(spin * straightInertia);
+            TookOff?.Invoke();
         }
 
         // Held too long: the body simply keeps rotating over the toes and drops, in whatever shape it is in.
@@ -232,7 +244,7 @@ namespace JumpGame
                 TurnCompleted?.Invoke(turns);
             }
 
-            velocity += Vector3.down * gravity * dt;
+            velocity += Vector3.down * gravity * Perk.gravity * dt;
             com += velocity * dt;
             PlaceAroundCom(localCom);
 
@@ -345,12 +357,15 @@ namespace JumpGame
             else if (hitTower) result = DiveScoring.Fail(EntryKind.HitTower, inZone);
             else result = DiveScoring.Evaluate(Rotation, tuck, inZone, zone.InCenter(hit), hitBuoys, zone.InsideMultiplier);
             result.usedTuck = UsedTuck;
+            DiveScoring.ApplyPerk(ref result, Perk);
             LastResult = result;
+            Broken = Perk.breaks;
+            faultTime = faultSparkTimer = 0f;
 
             Current = State.Underwater;
             pose.Underwater = true;
 
-            float size = Splash.SizeFor(LastResult.entry);
+            float size = Splash.SizeFor(LastResult.entry) * Perk.splash;
             if (splash != null) splash.Play(hit, size);
             zone.MakeWave(hit, size);
             Entered?.Invoke(LastResult);
@@ -361,7 +376,10 @@ namespace JumpGame
             pose.Step(dt);
             if (stuck) return;
 
-            velocity = Vector3.Lerp(velocity, Vector3.down * 0.5f, 1f - Mathf.Exp(-5f * dt));
+            // A short-circuited robot sputters for a moment and then hangs almost still.
+            Vector3 sinkTo = Vector3.down * (Broken ? 0.12f : 0.5f);
+            velocity = Vector3.Lerp(velocity, sinkTo, 1f - Mathf.Exp(-(Broken ? 9f : 5f) * dt));
+            if (Broken) SparkFault(dt);
             com += velocity * dt;
             angularMomentum = Mathf.MoveTowards(angularMomentum, 0f, Mathf.Abs(angularMomentum) * 4f * dt + 0.01f * dt);
 
@@ -370,6 +388,15 @@ namespace JumpGame
             Rotation += Spin * dt;
             PlaceAroundCom(localCom);
             TouchBuoys();
+        }
+
+        void SparkFault(float dt)
+        {
+            faultTime += dt;
+            faultSparkTimer -= dt;
+            if (faultTime > 1.8f || faultSparkTimer > 0f || splash == null) return;
+            faultSparkTimer = 0.1f;
+            splash.Sparks(EntryPoint + new Vector3(UnityEngine.Random.Range(-0.35f, 0.35f), 0.05f, UnityEngine.Random.Range(-0.35f, 0.35f)));
         }
 
         public void SetTower(DivingTower t) => tower = t;
@@ -386,7 +413,7 @@ namespace JumpGame
             transform.SetPositionAndRotation(startPosition, startRotation);
             velocity = Vector3.zero;
             angularMomentum = Spin = Rotation = tuck = Charge = holdTime = lean = leanVel = 0f;
-            Slipped = hitBuoys = hitTower = stuck = false;
+            Slipped = hitBuoys = hitTower = stuck = Broken = false;
             restTimer = 0f;
             pose.ResetPose();
             wasHeld = true; // ignore the tap that triggered the restart
