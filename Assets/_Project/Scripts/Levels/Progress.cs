@@ -25,7 +25,8 @@ namespace JumpGame
     // Local storage for now. The Yandex cloud save will sit behind the same two calls.
     public static class Progress
     {
-        const string Key = "jg_progress_v1";
+        // v2: levels grouped into locations; the old flat list doesn't map onto it.
+        const string Key = "jg_progress_v2";
 
         public static ProgressData Load(int levelCount)
         {

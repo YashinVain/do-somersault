@@ -21,6 +21,11 @@ namespace JumpGame
         [Header("Drift")]
         [SerializeField] float driftPeriod = 3.4f;
 
+        [Header("Centre")]
+        [Tooltip("Share of the radius that counts as the centre.")]
+        [SerializeField, Range(0.1f, 0.6f)] float centerShare = 0.33f;
+        [SerializeField] Transform centerMark;
+
         Vector3 anchor;
         float drift;
 
@@ -52,11 +57,14 @@ namespace JumpGame
         public float Radius => radius;
         public float InsideMultiplier => insideMultiplier;
 
-        public bool Contains(Vector3 point)
+        public bool Contains(Vector3 point) => FlatDistance(point) <= radius;
+        public bool InCenter(Vector3 point) => FlatDistance(point) <= radius * centerShare;
+
+        float FlatDistance(Vector3 point)
         {
             Vector3 d = point - transform.position;
             d.y = 0f;
-            return d.sqrMagnitude <= radius * radius;
+            return d.magnitude;
         }
 
         // Moves the ring and rebuilds the floats for a new radius. A drift above zero makes it sway sideways.
@@ -95,6 +103,13 @@ namespace JumpGame
             Init();
             for (int i = 0; i < count; i++)
                 if (rope != null) rope.SetPosition(i, floats[i].position);
+
+            if (centerMark != null)
+            {
+                // The mark mesh is a soft ring of radius 0.5.
+                float d = radius * centerShare * 2f;
+                centerMark.localScale = new Vector3(d, 1f, d);
+            }
         }
 
         void Init()
@@ -144,7 +159,7 @@ namespace JumpGame
                 offset[i].y = Mathf.Clamp(offset[i].y, -0.3f, 0.3f);
 
                 Vector3 world = transform.position + rest[i];
-                float wave = WaveHeight(world);
+                float wave = WaveHeight(world) + WaterMotion.Height(world);
                 float bob = Mathf.Sin(time * 1.7f + i * 0.6f) * idleBob;
 
                 floats[i].localPosition = rest[i] + offset[i] + Vector3.up * (wave + bob);
@@ -152,6 +167,9 @@ namespace JumpGame
                 floats[i].localRotation = Quaternion.Euler(v.z * 14f, 0f, -v.x * 14f) * restRotation[i];
                 if (rope != null) rope.SetPosition(i, floats[i].position);
             }
+
+            if (centerMark != null)
+                centerMark.localPosition = new Vector3(0f, 0.012f + WaterMotion.Height(transform.position), 0f);
         }
 
         float WaveHeight(Vector3 at)

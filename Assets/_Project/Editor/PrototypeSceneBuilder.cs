@@ -8,8 +8,9 @@ using UnityEngine.UI;
 
 namespace JumpGame.EditorTools
 {
-    // Builds the grey-box pool scene used to tune the dive. Safe to rerun: it overwrites the scene.
-    public static class PrototypeSceneBuilder
+    // Builds the whole game scene: every location, the diver, camera and UI. Safe to rerun: it overwrites the scene.
+    // The pool and shared parts live here, the other locations and the level map in PrototypeSceneBuilder.Sites.cs.
+    public static partial class PrototypeSceneBuilder
     {
         public const string ScenePath = "Assets/_Project/Scenes/Pool_Prototype.unity";
         const string MaterialDir = "Assets/_Project/Materials/Prototype";
@@ -21,6 +22,10 @@ namespace JumpGame.EditorTools
         static readonly Vector2 PoolX = new(-5f, 5f);
         static readonly Vector2 PoolZ = new(-3f, 15f);
         const float TowerBack = -4.8f;
+
+        // Each location sits on its own block; they stand side by side along X.
+        const float PoolBlockHalf = 32f, PoolBlockZ = 6f, PoolBlockTop = -3.1f;
+        static readonly Vector3[] SiteOffsets = { Vector3.zero, new(230f, 0f, 0f), new(460f, 0f, 0f) };
 
         // Platform heights, sideways position and how far the front edge reaches over the water.
         static readonly (float height, float x, float edgeZ)[] Platforms =
@@ -42,24 +47,28 @@ namespace JumpGame.EditorTools
             MakeMeshes();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            needsDiver.Clear();
 
-            BuildAtmosphere();
-            BuildPool();
-            var tower = BuildTower();
-            BuildSurroundings();
+            var sun = BuildAtmosphere();
+            var pool = BuildPoolSite();
+            var lake = BuildLakeSite();
+            var cliffs = BuildCliffSite();
 
             var zone = BuildZone();
             var splash = BuildSplash();
             var diver = BuildDiver();
             Link(diver, "zone", zone);
             Link(diver, "splash", splash);
-            Link(diver, "tower", tower);
+            Link(diver, "tower", pool.Tower);
+            foreach (var (owner, field, asTransform) in needsDiver)
+                Link(owner, field, asTransform ? diver.transform : (Object)diver);
 
             var cam = BuildCamera(diver, zone);
 
             var flow = new GameObject("Game").AddComponent<GameFlow>();
             Link(flow, "levels", LevelAsset());
-            Link(flow, "tower", tower);
+            LinkArray(flow, "sites", new Object[] { pool, lake, cliffs });
+            Link(flow, "sun", sun);
             Link(flow, "diver", diver);
             Link(flow, "zone", zone);
             Link(flow, "cam", cam);
@@ -68,7 +77,13 @@ namespace JumpGame.EditorTools
             Link(juice, "diver", diver);
             Link(juice, "view", cam);
 
-            BuildHud(diver, flow);
+            // All location blocks stay in the world side by side; the map flies between them.
+            var flowSo = new SerializedObject(flow);
+            flowSo.FindProperty("keepAllSitesActive").boolValue = true;
+            flowSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var ui = BuildHud(diver, flow);
+            BuildMap(ui, flow, diver, cam);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -88,7 +103,7 @@ namespace JumpGame.EditorTools
             drop = LowPolyMeshes.Icosphere("Drop", 0, 0.5f);
         }
 
-        static void BuildAtmosphere()
+        static Light BuildAtmosphere()
         {
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
@@ -119,11 +134,12 @@ namespace JumpGame.EditorTools
             RenderSettings.fogColor = Hex("#CDE6F0");
             RenderSettings.fogStartDistance = 30f;
             RenderSettings.fogEndDistance = 120f;
+            return sun;
         }
 
-        static void BuildPool()
+        static void BuildPool(Transform parent)
         {
-            var root = new GameObject("Pool").transform;
+            var root = Child("Pool", parent);
             var deck = Mat("Deck", "#D8C29E");
             var tile = Mat("PoolTile", "#6CC4D4");
             var line = Mat("PoolLine", "#245F92");
@@ -164,9 +180,9 @@ namespace JumpGame.EditorTools
             surface.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         }
 
-        static DivingTower BuildTower()
+        static DivingTower BuildTower(Transform parent)
         {
-            var root = new GameObject("Tower").transform;
+            var root = Child("Tower", parent);
             var concrete = Mat("Concrete", "#E4DED2");
             var accent = Mat("TowerAccent", "#EE6A55");
             var metal = Mat("Rail", "#F7F7F2", smoothness: 0.4f);
@@ -225,6 +241,11 @@ namespace JumpGame.EditorTools
             for (float y = 0.7f; y < 9.9f; y += 0.38f)
                 Box("Rung", root, new Vector3(0f, y, TowerBack - 0.1f), new Vector3(0.6f, 0.04f, 0.05f), metal);
 
+            return MakeTower(root, edges, solids);
+        }
+
+        static DivingTower MakeTower(Transform root, Transform[] edges, System.Collections.Generic.List<Bounds> solids)
+        {
             var tower = root.gameObject.AddComponent<DivingTower>();
             var so = new SerializedObject(tower);
             var arr = so.FindProperty("edges");
@@ -235,6 +256,20 @@ namespace JumpGame.EditorTools
             for (int i = 0; i < solids.Count; i++) boxes.GetArrayElementAtIndex(i).boundsValue = solids[i];
             so.ApplyModifiedPropertiesWithoutUndo();
             return tower;
+        }
+
+        static Transform Child(string name, Transform parent)
+        {
+            var t = new GameObject(name).transform;
+            t.SetParent(parent, false);
+            return t;
+        }
+
+        static Transform Mark(string name, Transform parent, Vector3 at)
+        {
+            var t = Child(name, parent);
+            t.localPosition = at;
+            return t;
         }
 
         // Level list. Distances and thresholds come from DiveCapture.Probe runs.
@@ -248,34 +283,35 @@ namespace JumpGame.EditorTools
                 AssetDatabase.CreateAsset(set, LevelsPath);
             }
 
-            LevelInfo L(int platform, float distance, float radius, float drift, TaskKind task, float turns = 0f) => new LevelInfo
+            LevelInfo L(int location, int platform, float distance, float radius, float drift, TaskKind task, float turns = 0f) => new LevelInfo
             {
-                platform = platform, zoneDistance = distance, zoneRadius = radius, zoneDrift = drift,
+                location = location, platform = platform, zoneDistance = distance, zoneRadius = radius, zoneDrift = drift,
                 task = task, taskTurns = turns
             };
 
-            // Probe, straight dives: 3 m reaches 1.6-5.2 m, 5 m 1.9-5.9, 7.5 m 2.2-6.7, 10 m 2.4-7.5.
-            // Max turns: 2 / 2 / 2.5 / 3, clean head-first: 1.5 / 1.5 / 2.5 / 2.5.
+            set.locations = new[] { "Городской бассейн", "Лесное озеро", "Скалы у моря" };
+
+            // Five dives per location. Pool platforms: 3 / 5 / 7.5 / 10 m. Lake tower: 5 / 8 / 11 m. Cliff ledges: 9 / 13 / 17 m.
             // Medal thresholds are filled in by DiveCapture.TuneLevels from the best dive it can find.
             var layout = new[]
             {
-                L(0, 2.2f, 1.6f, 0f, TaskKind.HeadFirst),
-                L(0, 3.0f, 1.4f, 0f, TaskKind.FeetFirst),
-                L(1, 3.5f, 1.3f, 0f, TaskKind.Turns, 1f),
-                L(1, 4.3f, 1.1f, 0f, TaskKind.CannonballInZone),
-                L(2, 4.0f, 1.2f, 0f, TaskKind.Turns, 1.5f),
-                L(2, 5.2f, 1.0f, 0f, TaskKind.ZoneNoBuoys),
-                L(3, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
-                L(3, 6.0f, 0.9f, 0f, TaskKind.CleanTurns, 2.5f),
+                L(0, 0, 2.2f, 1.6f, 0f, TaskKind.HeadFirst),
+                L(0, 0, 3.0f, 1.3f, 0f, TaskKind.FeetFirst),
+                L(0, 1, 3.5f, 1.3f, 0f, TaskKind.Turns, 1f),
+                L(0, 2, 4.0f, 1.2f, 0f, TaskKind.CannonballInZone),
+                L(0, 3, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
 
-                L(0, 2.0f, 0.9f, 0f, TaskKind.NoTuck),
-                L(0, 3.6f, 1.1f, 0f, TaskKind.CleanTurns, 1.5f),
-                L(1, 3.2f, 1.2f, 1.0f, TaskKind.HeadFirst),
-                L(1, 5.0f, 1.0f, 0f, TaskKind.Turns, 2f),
-                L(2, 3.6f, 1.1f, 1.2f, TaskKind.CannonballInZone),
-                L(2, 6.0f, 1.0f, 0f, TaskKind.CleanTurns, 2.5f),
-                L(3, 5.4f, 1.0f, 1.4f, TaskKind.Turns, 2.5f),
-                L(3, 7.0f, 0.9f, 0f, TaskKind.Turns, 3f)
+                L(1, 0, 2.3f, 1.1f, 0f, TaskKind.NoTuck),
+                L(1, 1, 4.2f, 1.2f, 0.9f, TaskKind.Bullseye),
+                L(1, 1, 5.2f, 1.0f, 0f, TaskKind.Turns, 1.5f),
+                L(1, 2, 4.8f, 1.1f, 0f, TaskKind.ZoneNoBuoys),
+                L(1, 2, 6.2f, 1.0f, 1.2f, TaskKind.CleanTurns, 2.5f),
+
+                L(2, 0, 4.5f, 1.2f, 0f, TaskKind.Turns, 2f),
+                L(2, 1, 5.0f, 1.1f, 0f, TaskKind.CannonballInZone),
+                L(2, 1, 6.5f, 1.0f, 1.0f, TaskKind.CleanTurns, 2.5f),
+                L(2, 2, 5.5f, 1.0f, 0f, TaskKind.Turns, 3f),
+                L(2, 2, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye)
             };
 
             // Keep tuned thresholds for levels whose layout did not change.
@@ -283,7 +319,7 @@ namespace JumpGame.EditorTools
             for (int i = 0; i < layout.Length; i++)
             {
                 var o = old != null && i < old.Length ? old[i] : null;
-                bool same = o != null && o.platform == layout[i].platform && o.task == layout[i].task
+                bool same = o != null && o.location == layout[i].location && o.platform == layout[i].platform && o.task == layout[i].task
                     && Mathf.Approximately(o.zoneDistance, layout[i].zoneDistance)
                     && Mathf.Approximately(o.zoneRadius, layout[i].zoneRadius)
                     && Mathf.Approximately(o.zoneDrift, layout[i].zoneDrift);
@@ -300,9 +336,9 @@ namespace JumpGame.EditorTools
             return set;
         }
 
-        static void BuildSurroundings()
+        static void BuildSurroundings(Transform parent)
         {
-            var root = new GameObject("Surroundings").transform;
+            var root = Child("Surroundings", parent);
             var grass = Mat("Grass", "#79BC5A");
             var wall = Mat("Wall", "#E6D9C6");
             var white = Mat("ChairWood", "#B5875B");
@@ -314,10 +350,13 @@ namespace JumpGame.EditorTools
             var leavesDark = Mat("LeavesDark", "#3F9A57");
             var hill = Mat("Hill", "#7DBB8A");
 
-            Box("Grass_E", root, new Vector3(62f, 0.1f, 6f), new Vector3(100f, 0.2f, 160f), grass);
-            Box("Grass_W", root, new Vector3(-62f, 0.1f, 6f), new Vector3(100f, 0.2f, 160f), grass);
-            Box("Grass_N", root, new Vector3(0f, 0.1f, 50f), new Vector3(24f, 0.2f, 60f), grass);
-            Box("Grass_S", root, new Vector3(0f, 0.1f, -38f), new Vector3(24f, 0.2f, 60f), grass);
+            // Lawn out to the edges of the location block, solid down to the block's base.
+            float lawnY = (0.2f + PoolBlockTop) * 0.5f, lawnH = 0.2f - PoolBlockTop;
+            float bx0 = -PoolBlockHalf, bx1 = PoolBlockHalf, bz0 = PoolBlockZ - PoolBlockHalf, bz1 = PoolBlockZ + PoolBlockHalf;
+            Box("Grass_E", root, new Vector3((12f + bx1) * 0.5f, lawnY, PoolBlockZ), new Vector3(bx1 - 12f, lawnH, bz1 - bz0), grass);
+            Box("Grass_W", root, new Vector3((bx0 - 12f) * 0.5f, lawnY, PoolBlockZ), new Vector3(-12f - bx0, lawnH, bz1 - bz0), grass);
+            Box("Grass_N", root, new Vector3(0f, lawnY, (20f + bz1) * 0.5f), new Vector3(24f, lawnH, bz1 - 20f), grass);
+            Box("Grass_S", root, new Vector3(0f, lawnY, (bz0 - 8f) * 0.5f), new Vector3(24f, lawnH, -8f - bz0), grass);
 
             Box("Wall_E", root, new Vector3(12.1f, 0.9f, 6f), new Vector3(0.25f, 1.2f, 28.4f), wall);
             Box("Wall_W", root, new Vector3(-12.1f, 0.9f, 6f), new Vector3(0.25f, 1.2f, 28.4f), wall);
@@ -352,9 +391,9 @@ namespace JumpGame.EditorTools
                     Tree(root, at, s, rng.Next(2) == 0 ? leaves : leavesDark, trunk);
                 }
 
-                Put(rough, "Hill_1", root, new Vector3(70f * side, -6f, -10f), new Vector3(60f, 26f, 50f), hill);
-                Put(rough, "Hill_2", root, new Vector3(85f * side, -10f, 30f), new Vector3(80f, 36f, 60f), hill);
-                Put(rough, "Hill_3", root, new Vector3(60f * side, -8f, 55f), new Vector3(50f, 24f, 40f), hill);
+                // Gentle mounds in the far corners of the block instead of distant hills.
+                Put(rough, "Mound", root, new Vector3(25f * side, -1.2f, 31f), new Vector3(13f, 5f, 11f), hill);
+                Put(rough, "Mound", root, new Vector3(26f * side, -1.4f, -18f), new Vector3(10f, 4.4f, 12f), hill);
             }
         }
 
@@ -419,12 +458,20 @@ namespace JumpGame.EditorTools
             rope.shadowCastingMode = ShadowCastingMode.Off;
             rope.positionCount = 0;
 
+            // A faint warm ring marks the centre bonus; the zone scales it to the level's radius.
+            var markMat = Mat("CenterMark", "#FFFFFF", shader: "Legacy Shaders/Particles/Alpha Blended");
+            markMat.SetColor("_TintColor", new Color(0.6f, 0.52f, 0.18f, 0.3f));
+            var mark = Put(LowPolyMeshes.SoftRing("CenterRing", 0.28f, 0.5f, 40, 4), "CenterMark", go.transform,
+                           new Vector3(0f, 0.012f, 0f), Vector3.one, markMat);
+            mark.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+
             // Floats are created by the zone itself for each level's radius.
             var zone = go.AddComponent<LandingZone>();
             Link(zone, "rope", rope);
             Link(zone, "floatMesh", floatMesh);
             Link(zone, "floatRed", red);
             Link(zone, "floatWhite", white);
+            Link(zone, "centerMark", mark);
             return zone;
         }
 
@@ -642,7 +689,7 @@ namespace JumpGame.EditorTools
             return follow;
         }
 
-        static void BuildHud(Diver diver, GameFlow flow)
+        static UiKit BuildHud(Diver diver, GameFlow flow)
         {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
@@ -746,9 +793,9 @@ namespace JumpGame.EditorTools
             var center = new Vector2(0.5f, 0.5f);
 
             // Level selector, top centre.
-            var levelTitle = Label("LevelTitle", root, top, new Vector2(0f, -22f), new Vector2(460f, 50f), 34, TextAnchor.MiddleCenter);
-            var prev = Btn("Prev", root, top, new Vector2(-260f, -22f), new Vector2(64f, 56f), "<", "#2BA39C", 34);
-            var next = Btn("Next", root, top, new Vector2(260f, -22f), new Vector2(64f, 56f), ">", "#2BA39C", 34);
+            var levelTitle = Label("LevelTitle", root, top, new Vector2(0f, -22f), new Vector2(560f, 50f), 28, TextAnchor.MiddleCenter);
+            var prev = Btn("Prev", root, top, new Vector2(-70f, -74f), new Vector2(56f, 46f), "<", "#2BA39C", 30);
+            var next = Btn("Next", root, top, new Vector2(70f, -74f), new Vector2(56f, 46f), ">", "#2BA39C", 30);
 
             // Goals and task, top left.
             var dots = new Image[3];
@@ -760,7 +807,7 @@ namespace JumpGame.EditorTools
                 goalTexts[i] = Label("GoalText_" + i, root, topLeft, new Vector2(x + 38f, -22f), new Vector2(80f, 34f), 26, TextAnchor.MiddleLeft);
             }
             var taskDot = Dot("TaskDot", root, topLeft, new Vector2(32f, -74f), 22f);
-            var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(520f, 34f), 24, TextAnchor.MiddleLeft);
+            var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(440f, 34f), 22, TextAnchor.MiddleLeft);
             var menuButton = Btn("Menu", root, topRight, new Vector2(-24f, -18f), new Vector2(120f, 56f), "Меню", "#2BA39C", 26);
             var best = Label("Best", root, topRight, new Vector2(-28f, -84f), new Vector2(360f, 40f), 26, TextAnchor.MiddleRight);
 
@@ -845,7 +892,11 @@ namespace JumpGame.EditorTools
             Link(popups, "view", Object.FindAnyObjectByType<Camera>());
             Link(popups, "template", popupTemplate);
 
-            BuildMenu(canvasGo.transform, root.gameObject, flow, diver, menuButton, Stretch, Rect, Btn, Label, knob);
+            return new UiKit
+            {
+                canvas = canvasGo.transform, hud = root.gameObject, menuButton = menuButton,
+                Stretch = Stretch, Rect = Rect, Btn = Btn, Label = Label, knob = knob, pill = pill
+            };
         }
 
         delegate RectTransform StretchFn(string n, Transform parent);
@@ -853,74 +904,17 @@ namespace JumpGame.EditorTools
         delegate Button ButtonFn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, string label, string color, int fontSize);
         delegate Text LabelFn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, int fontSize, TextAnchor align, FontStyle style = FontStyle.Bold);
 
-        static void BuildMenu(Transform canvas, GameObject hudRoot, GameFlow flow, Diver diver, Button menuButton,
-            StretchFn Stretch, RectFn Rect, ButtonFn Btn, LabelFn Label, Sprite knob)
+        // What the level map needs from the HUD build: where to put things and the same widget makers.
+        struct UiKit
         {
-            var center = new Vector2(0.5f, 0.5f);
-
-            Image Shade(Transform parent, Color c)
-            {
-                var img = Stretch("Shade", parent).gameObject.AddComponent<Image>();
-                img.color = c;
-                return img;
-            }
-
-            // Title.
-            var main = Stretch("TitleScreen", canvas);
-            Shade(main, new Color(0.06f, 0.1f, 0.2f, 0.35f));
-            var title = Label("Title", main, center, new Vector2(0f, 170f), new Vector2(1000f, 160f), 132, TextAnchor.MiddleCenter);
-            title.text = "НЫРЯЙ!";
-            title.color = Hex("#FFD45A");
-            var sub = Label("Subtitle", main, center, new Vector2(0f, 75f), new Vector2(800f, 50f), 36, TextAnchor.MiddleCenter, FontStyle.Normal);
-            sub.text = "прыжки с вышки";
-            var play = Btn("Play", main, center, new Vector2(0f, -40f), new Vector2(340f, 96f), "Играть", "#EE6A55", 44);
-            var levels = Btn("Levels", main, center, new Vector2(0f, -150f), new Vector2(300f, 76f), "Уровни", "#2BA39C", 34);
-            var medals = Label("Medals", main, new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(800f, 40f), 28, TextAnchor.MiddleCenter, FontStyle.Normal);
-
-            // Level grid.
-            var levelsPanel = Stretch("LevelScreen", canvas);
-            Shade(levelsPanel, new Color(0.06f, 0.1f, 0.2f, 0.55f));
-            var heading = Label("Heading", levelsPanel, new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(800f, 70f), 54, TextAnchor.MiddleCenter);
-            heading.text = "Уровни";
-            var back = Btn("Back", levelsPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(150f, 60f), "Назад", "#2BA39C", 28);
-
-            var gridRt = Rect("Grid", levelsPanel, center, new Vector2(0f, -30f), new Vector2(1100f, 480f));
-            var layout = gridRt.gameObject.AddComponent<GridLayoutGroup>();
-            layout.cellSize = new Vector2(124f, 136f);
-            layout.spacing = new Vector2(16f, 18f);
-            layout.childAlignment = TextAnchor.UpperCenter;
-            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            layout.constraintCount = 8;
-
-            var card = Btn("CardTemplate", gridRt, center, Vector2.zero, new Vector2(124f, 136f), "", "#2BA39C", 10);
-            Object.DestroyImmediate(card.transform.Find("Label").gameObject);
-            Label("Number", card.transform, center, new Vector2(0f, 22f), new Vector2(120f, 60f), 50, TextAnchor.MiddleCenter);
-            Label("Height", card.transform, center, new Vector2(0f, -22f), new Vector2(120f, 30f), 22, TextAnchor.MiddleCenter, FontStyle.Normal);
-            var medalRow = Rect("Medals", card.transform, center, new Vector2(0f, -50f), new Vector2(110f, 24f));
-            for (int i = 0; i < 3; i++)
-            {
-                var dot = Rect("Dot_" + i, medalRow, center, new Vector2((i - 1) * 28f, 0f), new Vector2(20f, 20f)).gameObject.AddComponent<Image>();
-                dot.sprite = knob;
-                dot.raycastTarget = false;
-            }
-
-            levelsPanel.gameObject.SetActive(false);
-            card.gameObject.SetActive(false);
-
-            var menu = canvas.gameObject.AddComponent<MenuScreen>();
-            Link(menu, "flow", flow);
-            Link(menu, "diver", diver);
-            Link(menu, "hud", hudRoot);
-            Link(menu, "mainPanel", main.gameObject);
-            Link(menu, "playButton", play);
-            Link(menu, "levelsButton", levels);
-            Link(menu, "playLabel", play.GetComponentInChildren<Text>());
-            Link(menu, "medalCount", medals);
-            Link(menu, "levelsPanel", levelsPanel.gameObject);
-            Link(menu, "backButton", back);
-            Link(menu, "grid", gridRt);
-            Link(menu, "cardTemplate", card);
-            Link(menu, "menuButton", menuButton);
+            public Transform canvas;
+            public GameObject hud;
+            public Button menuButton;
+            public StretchFn Stretch;
+            public RectFn Rect;
+            public ButtonFn Btn;
+            public LabelFn Label;
+            public Sprite knob, pill;
         }
 
         static void LinkArray(Object owner, string field, Object[] values)

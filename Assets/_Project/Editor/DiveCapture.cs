@@ -29,7 +29,7 @@ namespace JumpGame.EditorTools
         static Camera cam;
         static GameFlow flow;
         static DiveHud hud;
-        static MenuScreen menu;
+        static MapScreen map;
         static Splash splash;
         static TurnPopups popups;
         static DiveOutcome? lastOutcome;
@@ -79,7 +79,7 @@ namespace JumpGame.EditorTools
                 var sb = new StringBuilder($"JUMPS level {level + 1}\n");
                 var worst = new System.Collections.Generic.List<(float jump, string line)>();
 
-                var tower = UnityEngine.Object.FindAnyObjectByType<DivingTower>();
+                var tower = flow.Site(flow.Level.location).Tower;
                 var contacts = new Vector3[DiverPose.ContactCount];
                 for (float t = 0f; t < 3f; t += Dt)
                 {
@@ -126,7 +126,7 @@ namespace JumpGame.EditorTools
             follow = UnityEngine.Object.FindAnyObjectByType<DiveCamera>();
             flow = UnityEngine.Object.FindAnyObjectByType<GameFlow>();
             hud = UnityEngine.Object.FindAnyObjectByType<DiveHud>();
-            menu = UnityEngine.Object.FindAnyObjectByType<MenuScreen>();
+            map = UnityEngine.Object.FindAnyObjectByType<MapScreen>();
             splash = UnityEngine.Object.FindAnyObjectByType<Splash>();
             popups = UnityEngine.Object.FindAnyObjectByType<TurnPopups>();
             cam = follow.GetComponent<Camera>();
@@ -138,18 +138,27 @@ namespace JumpGame.EditorTools
             flow.Finished += o => lastOutcome = o;
             diver.TurnCompleted += popups.Show;
             diver.Restarted += popups.Clear;
+            // DiveJuice listens in OnEnable, which edit mode never calls.
+            diver.Entered += r => { if (r.bullseye && !r.Failed) follow.Highlight(diver.EntryPoint); };
         }
 
         static void Capture()
         {
+            // Title and the 3D map of every location.
+            flow.Load(0);
+            map.Preview(0);
+            CaptureUi("Logs/capture_title.png", null, keepState: true);
+            for (int loc = 0; loc < flow.LocationCount; loc++)
+            {
+                flow.Load(flow.LevelsIn(loc)[1]);
+                map.Preview(1);
+                CaptureUi($"Logs/capture_map_{loc}.png", null, keepState: true);
+            }
+            map.Preview(2);
+
             CaptureLevels();
 
             flow.Load(2);
-            menu.Preview(0);
-            CaptureUi("Logs/capture_menu.png", null);
-            menu.Preview(1);
-            CaptureUi("Logs/capture_menu_levels.png", null);
-            menu.Preview(-1);
             CaptureUi("Logs/capture_ui_ready.png", null);
 
             var scenarios = new[]
@@ -171,11 +180,42 @@ namespace JumpGame.EditorTools
                     name = "flop", level = 4,
                     held = t => t < 0.8f,
                     frames = new[] { 1.8f, 2.0f, 2.1f, 2.2f, 2.3f, 2.4f, 2.5f, 2.7f, 2.9f, 3.2f, 3.6f, 4.0f }
+                },
+                new Scenario
+                {
+                    name = "lake", level = 7,
+                    held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
+                    frames = new[] { 0.9f, 1.3f, 1.6f, 1.9f, 2.2f, 2.5f, 2.7f, 2.9f, 3.1f, 3.3f, 3.6f, 4.0f }
+                },
+                new Scenario
+                {
+                    name = "cliff", level = 13,
+                    held = t => t < 1.05f || (t > 1.17f && t < 2.6f),
+                    frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
                 }
             };
 
             foreach (var s in scenarios)
                 RunScenario(s);
+
+            // Find any dive that lands in the very centre, then film it to check the close-up.
+            flow.Load(2);
+            float bh = -1f, bt = 0f;
+            for (float h = 0.5f; h <= 1.3f && bh < 0f; h += 0.02f)
+                for (float d = 0f; d <= 1.6f; d += 0.04f)
+                {
+                    float hh = h, dd = d;
+                    Simulate(t => t < hh || (dd > 0f && t > hh + 0.1f && t < hh + 0.1f + dd), 6f, true);
+                    if (diver.LastResult.bullseye && diver.LastResult.entry == EntryKind.HeadClean) { bh = h; bt = d; break; }
+                }
+            Debug.Log($"BULLSEYE dive: hold {bh:0.00} tuck {bt:0.00}");
+            if (bh > 0f)
+                RunScenario(new Scenario
+                {
+                    name = "bullseye", level = 2,
+                    held = t => t < bh || (bt > 0f && t > bh + 0.1f && t < bh + 0.1f + bt),
+                    frames = new[] { 2.2f, 2.4f, 2.5f, 2.6f, 2.7f, 2.8f, 3.0f, 3.2f, 3.5f, 3.8f, 4.2f, 4.8f }
+                });
 
             // HUD mid-flight with a turn popup, then the result screen.
             flow.Load(2);
@@ -244,7 +284,7 @@ namespace JumpGame.EditorTools
 
         static float Distance()
         {
-            var edge = UnityEngine.Object.FindAnyObjectByType<DivingTower>().Edge(flow.Level.platform);
+            var edge = flow.Site(flow.Level.location).Tower.Edge(flow.Level.platform);
             return Vector3.Dot(diver.EntryPoint - edge.position, edge.forward);
         }
 
@@ -269,7 +309,7 @@ namespace JumpGame.EditorTools
         static void CaptureLevels()
         {
             var sheet = new Texture2D(FrameW * 2, FrameH * 2, TextureFormat.RGB24, false);
-            int[] levels = { 0, 2, 4, 6 };
+            int[] levels = { 2, 6, 9, 13 };
             for (int i = 0; i < levels.Length; i++)
             {
                 flow.Load(levels[i]);

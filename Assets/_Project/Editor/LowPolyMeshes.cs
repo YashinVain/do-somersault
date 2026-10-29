@@ -136,6 +136,155 @@ namespace JumpGame.EditorTools
             return Lathe(name, p, sides, true);
         }
 
+        // A sea cliff as one faceted surface. The face follows faceZ(x) (a headland curving back at the ends),
+        // every corner is nudged by noise, each row of facets goes into one of `bands` submeshes for the rock strata,
+        // and the last submesh is the grass cap running back from the ragged top edge.
+        public static Mesh CliffWall(string name, float width, float bottom, float top, int cols, int rows,
+                                     int bands, float capDepthZ, System.Func<float, float> faceZ, int seed)
+        {
+            var rng = new System.Random(seed);
+            float N(float a) => ((float)rng.NextDouble() * 2f - 1f) * a;
+
+            var grid = new Vector3[(cols + 1) * (rows + 1)];
+            float cell = width / cols, rowH = (top - bottom) / rows;
+            for (int j = 0; j <= rows; j++)
+                for (int i = 0; i <= cols; i++)
+                {
+                    float x = -width * 0.5f + i * cell + (i > 0 && i < cols ? N(cell * 0.18f) : 0f);
+                    float y = bottom + j * rowH + (j > 0 ? N(rowH * (j == rows ? 0.22f : 0.16f)) : 0f);
+                    // Deeper notches in the upper half read as overhangs and cracks.
+                    float z = faceZ(x) + N(0.75f) - (j > rows / 2 ? Mathf.Abs(N(0.5f)) : 0f);
+                    grid[j * (cols + 1) + i] = new Vector3(x, y, z);
+                }
+
+            var verts = new List<Vector3>();
+            var subs = new List<List<int>>();
+            for (int b = 0; b <= bands; b++) subs.Add(new List<int>());
+            void Tri(int sub, Vector3 a, Vector3 b, Vector3 c)
+            {
+                subs[sub].Add(verts.Count); verts.Add(a);
+                subs[sub].Add(verts.Count); verts.Add(b);
+                subs[sub].Add(verts.Count); verts.Add(c);
+            }
+            Vector3 G(int i, int j) => grid[j * (cols + 1) + i];
+
+            // Face, seen from +Z: screen right is -X.
+            for (int j = 0; j < rows; j++)
+                for (int i = 0; i < cols; i++)
+                {
+                    int band = j % bands;
+                    Tri(band, G(i + 1, j), G(i + 1, j + 1), G(i, j + 1));
+                    Tri(band, G(i + 1, j), G(i, j + 1), G(i, j));
+                }
+
+            // Grass cap from the ragged rim back to a flat line.
+            for (int i = 0; i < cols; i++)
+            {
+                var f0 = G(i, rows);
+                var f1 = G(i + 1, rows);
+                var b0 = new Vector3(f0.x, top, capDepthZ);
+                var b1 = new Vector3(f1.x, top, capDepthZ);
+                Tri(bands, b0, f0, f1);
+                Tri(bands, b0, f1, b1);
+            }
+
+            Directory.CreateDirectory(Dir);
+            string path = $"{Dir}/{name}.asset";
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            bool isNew = mesh == null;
+            if (isNew) mesh = new Mesh();
+            mesh.Clear();
+            mesh.name = name;
+            mesh.SetVertices(verts);
+            mesh.subMeshCount = subs.Count;
+            for (int s = 0; s < subs.Count; s++) mesh.SetTriangles(subs[s], s);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            if (isNew) AssetDatabase.CreateAsset(mesh, path);
+            else EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // Triangle flag hanging down from its top edge, visible from both sides.
+        public static Mesh Pennant(string name, float width, float height)
+        {
+            var a = new Vector3(-width * 0.5f, 0f, 0f);
+            var b = new Vector3(width * 0.5f, 0f, 0f);
+            var c = new Vector3(0f, -height, 0f);
+            var verts = new List<Vector3> { a, b, c, a, c, b };
+            return Save(name, verts);
+        }
+
+        // Flat rectangle facing up, centred on the origin.
+        public static Mesh Quad(string name, float sizeX, float sizeZ)
+        {
+            float x = sizeX * 0.5f, z = sizeZ * 0.5f;
+            var verts = new List<Vector3> { new(-x, 0f, -z), new(-x, 0f, z), new(x, 0f, z), new(x, 0f, -z) };
+            var tris = new List<int> { 0, 1, 2, 0, 2, 3 };
+            var normals = new List<Vector3> { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            return Save(name, verts, normals, tris);
+        }
+
+        // Ring-shaped tube (a torus): life buoys, inflatables.
+        public static Mesh Torus(string name, float radius, float tube, int sides = 24, int tubeSides = 10)
+        {
+            var verts = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var tris = new List<int>();
+            for (int i = 0; i <= sides; i++)
+            {
+                float a = i / (float)sides * Mathf.PI * 2f;
+                var c = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                for (int j = 0; j <= tubeSides; j++)
+                {
+                    float b = j / (float)tubeSides * Mathf.PI * 2f;
+                    var n = c * Mathf.Cos(b) + Vector3.up * Mathf.Sin(b);
+                    verts.Add(c * radius + n * tube);
+                    normals.Add(n);
+                }
+            }
+            int row = tubeSides + 1;
+            for (int i = 0; i < sides; i++)
+                for (int j = 0; j < tubeSides; j++)
+                {
+                    int a = i * row + j, b = a + row, c = a + 1, d = b + 1;
+                    tris.AddRange(new[] { a, c, d, a, d, b });
+                }
+            return Save(name, verts, normals, tris);
+        }
+
+        // Flat arrow pointing along +X, extruded along Z, flat-shaded.
+        public static Mesh Arrow(string name, float length, float shaft, float head, float headLength, float depth)
+        {
+            float x0 = -length * 0.5f, x1 = length * 0.5f - headLength, x2 = length * 0.5f;
+            Vector2[] outline =
+            {
+                new(x0, -shaft * 0.5f), new(x1, -shaft * 0.5f), new(x1, -head * 0.5f), new(x2, 0f),
+                new(x1, head * 0.5f), new(x1, shaft * 0.5f), new(x0, shaft * 0.5f)
+            };
+            float zf = -depth * 0.5f, zb = depth * 0.5f;
+            var verts = new List<Vector3>();
+            void T(Vector3 a, Vector3 b, Vector3 c) { verts.Add(a); verts.Add(b); verts.Add(c); }
+
+            // Front (facing -Z) and back caps: the shaft as two triangles, the head as one.
+            int[][] caps = { new[] { 0, 6, 5 }, new[] { 0, 5, 1 }, new[] { 2, 4, 3 } };
+            foreach (var t in caps)
+            {
+                T(V(outline[t[0]], zf), V(outline[t[1]], zf), V(outline[t[2]], zf));
+                T(V(outline[t[0]], zb), V(outline[t[2]], zb), V(outline[t[1]], zb));
+            }
+            for (int i = 0; i < outline.Length; i++)
+            {
+                var a = outline[i];
+                var b = outline[(i + 1) % outline.Length];
+                T(V(a, zf), V(b, zf), V(b, zb));
+                T(V(a, zf), V(b, zb), V(a, zb));
+            }
+            return Save(name, verts);
+
+            static Vector3 V(Vector2 p, float z) => new(p.x, p.y, z);
+        }
+
         // Flat ring facing up with alpha in the vertex colours: 0 at both edges, 1 in the middle.
         // With inner = 0 it becomes a disc that is opaque in the centre and fades out to the rim.
         public static Mesh SoftRing(string name, float inner, float outer, int sides = 40, int bands = 6)

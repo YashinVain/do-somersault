@@ -21,15 +21,45 @@ namespace JumpGame
         [SerializeField] float followSharpness = 3.5f;
         [SerializeField] float minHeight = 2.4f;
 
+        [Header("Centre hit close-up")]
+        [Tooltip("Real seconds, unaffected by slow motion.")]
+        [SerializeField] float highlightTime = 2f;
+        [SerializeField] float highlightDistance = 3.4f;
+        [Tooltip("How far the camera swings round the splash, degrees.")]
+        [SerializeField] float highlightOrbit = 35f;
+
         Camera cam;
         Vector3 focus;
         float distance;
         readonly Vector3[] points = new Vector3[6];
 
         float shake;
+        float highlightAge = -1f;
+        Vector3 highlightPoint;
+
+        // Flying in from wherever the camera was left (the level map).
+        const float BlendTime = 0.9f;
+        float blendAge = -1f;
+        Vector3 blendPos;
+        Quaternion blendRot;
+
+        public void BlendFromCurrent()
+        {
+            blendPos = transform.position;
+            blendRot = transform.rotation;
+            Solve(out focus, out distance);
+            blendAge = 0f;
+        }
 
         // A short jolt that dies out in about half a second.
         public void Shake(float strength) => shake = Mathf.Max(shake, strength);
+
+        // Swoop in on the splash, swing round it a little, then go back to the usual shot.
+        public void Highlight(Vector3 point)
+        {
+            highlightPoint = point;
+            highlightAge = 0f;
+        }
 
         // +1 films from the -X side of the pool, -1 from the +X side.
         public void SetSide(float sign) => viewDirection.x = Mathf.Abs(viewDirection.x) * Mathf.Sign(sign);
@@ -40,8 +70,11 @@ namespace JumpGame
 
         public void Snap()
         {
+            highlightAge = -1f;
+            blendAge = -1f;
             Solve(out focus, out distance);
-            Place();
+            // While the level map owns the camera, only remember the shot for later.
+            if (enabled) Place();
         }
 
         public void Step(float dt)
@@ -50,7 +83,24 @@ namespace JumpGame
             float k = 1f - Mathf.Exp(-followSharpness * dt);
             focus = Vector3.Lerp(focus, f, k);
             distance = Mathf.Lerp(distance, d, k);
+
+            if (highlightAge >= 0f)
+            {
+                // Real time in play mode so slow motion doesn't stretch it; editor tools pass their own step.
+                highlightAge += Application.isPlaying ? Time.unscaledDeltaTime : dt;
+                if (highlightAge > highlightTime) highlightAge = -1f;
+            }
             Place();
+        }
+
+        // 0 → 1 quickly, hold, then ease back to 0 over the last part.
+        float HighlightWeight()
+        {
+            if (highlightAge < 0f) return 0f;
+            float t = highlightAge / highlightTime;
+            float rise = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(highlightAge / 0.25f));
+            float fall = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - t) / 0.35f));
+            return Mathf.Min(rise, fall);
         }
 
         void Solve(out Vector3 f, out float d)
@@ -96,10 +146,33 @@ namespace JumpGame
         void Place()
         {
             Vector3 dir = viewDirection.normalized;
-            Vector3 pos = focus - dir * distance;
-            pos.y = Mathf.Max(pos.y, minHeight);
+            Vector3 f = focus;
+            float d = distance;
+
+            float w = HighlightWeight();
+            if (w > 0f)
+            {
+                float swing = highlightOrbit * Mathf.Sign(viewDirection.x) * Mathf.SmoothStep(0f, 1f, highlightAge / highlightTime);
+                Vector3 close = Quaternion.AngleAxis(swing, Vector3.up) * dir;
+                close = Vector3.Slerp(close, Vector3.down, 0.15f).normalized;
+                dir = Vector3.Slerp(dir, close, w).normalized;
+                f = Vector3.Lerp(focus, highlightPoint + Vector3.up * 0.5f, w);
+                d = Mathf.Lerp(distance, highlightDistance, w);
+            }
+
+            Vector3 pos = f - dir * d;
+            pos.y = Mathf.Max(pos.y, Mathf.Lerp(minHeight, 0.9f, w));
             transform.position = pos;
-            transform.LookAt(focus);
+            transform.LookAt(f);
+
+            if (blendAge >= 0f)
+            {
+                blendAge += Application.isPlaying ? Time.unscaledDeltaTime : 0.02f;
+                float b = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(blendAge / BlendTime));
+                transform.SetPositionAndRotation(Vector3.Lerp(blendPos, transform.position, b),
+                                                 Quaternion.Slerp(blendRot, transform.rotation, b));
+                if (b >= 1f) blendAge = -1f;
+            }
 
             if (shake > 0.001f)
             {

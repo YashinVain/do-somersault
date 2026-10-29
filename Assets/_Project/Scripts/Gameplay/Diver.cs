@@ -343,7 +343,7 @@ namespace JumpGame
             DiveResult result;
             if (Slipped) result = DiveScoring.Fail(EntryKind.Slipped, inZone);
             else if (hitTower) result = DiveScoring.Fail(EntryKind.HitTower, inZone);
-            else result = DiveScoring.Evaluate(Rotation, tuck, inZone, hitBuoys, zone.InsideMultiplier);
+            else result = DiveScoring.Evaluate(Rotation, tuck, inZone, zone.InCenter(hit), hitBuoys, zone.InsideMultiplier);
             result.usedTuck = UsedTuck;
             LastResult = result;
 
@@ -371,6 +371,8 @@ namespace JumpGame
             PlaceAroundCom(localCom);
             TouchBuoys();
         }
+
+        public void SetTower(DivingTower t) => tower = t;
 
         public void SetStart(Vector3 position, Quaternion rotation)
         {

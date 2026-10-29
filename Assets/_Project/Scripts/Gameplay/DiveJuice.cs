@@ -30,6 +30,13 @@ namespace JumpGame
 
         void OnEntered(DiveResult r)
         {
+            if (r.bullseye && !r.Failed)
+            {
+                view.Highlight(diver.EntryPoint);
+                slowLeft = slowTime * 1.4f;
+                return;
+            }
+
             switch (r.entry)
             {
                 case EntryKind.HeadClean:
@@ -53,6 +60,7 @@ namespace JumpGame
             slowLeft -= Time.unscaledDeltaTime;
             // Hold the slow part for the first half, then ease back up.
             float t = Mathf.Clamp01(slowLeft / slowTime);
+            if (t >= 1f) { Time.timeScale = slowScale; return; }
             Time.timeScale = slowLeft <= 0f ? 1f : Mathf.Lerp(1f, slowScale, Mathf.Clamp01(t * 2f));
         }
 

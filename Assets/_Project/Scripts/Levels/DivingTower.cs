@@ -3,7 +3,7 @@ using UnityEngine;
 namespace JumpGame
 {
     // Platforms of the tower. Each edge marker sits on the top surface, at the middle of the front edge, facing the pool.
-    // Solids are world-space boxes the diver's body bumps into.
+    // Solids are boxes in the tower's own space (it is never rotated or scaled) that the diver's body bumps into.
     public class DivingTower : MonoBehaviour
     {
         [SerializeField] Transform[] edges;
@@ -14,8 +14,9 @@ namespace JumpGame
         public float Height(int i) => Edge(i).position.y;
 
         // Deepest overlap of a point with the tower: how far to push it out and in which direction.
-        public bool Penetration(Vector3 p, out Vector3 normal, out float depth)
+        public bool Penetration(Vector3 world, out Vector3 normal, out float depth)
         {
+            Vector3 p = world - transform.position;
             normal = Vector3.zero;
             depth = 0f;
             bool hit = false;

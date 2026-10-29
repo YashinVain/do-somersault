@@ -12,13 +12,16 @@ namespace JumpGame
         CleanTurns,
         CannonballInZone,
         ZoneNoBuoys,
-        NoTuck
+        NoTuck,
+        Bullseye
     }
 
     [Serializable]
     public class LevelInfo
     {
-        [Tooltip("Index of the platform on the tower.")]
+        [Tooltip("Index into LevelSet.locations.")]
+        public int location;
+        [Tooltip("Index of the platform on that location's tower.")]
         public int platform;
         [Tooltip("Distance from the platform edge to the centre of the buoy ring, metres.")]
         public float zoneDistance = 4f;
@@ -39,6 +42,7 @@ namespace JumpGame
             TaskKind.CleanTurns => "Чистый вход и " + Turns(taskTurns),
             TaskKind.CannonballInZone => "Бомбочка в зону",
             TaskKind.NoTuck => "Попади в зону без группировки",
+            TaskKind.Bullseye => "Попади в самый центр круга",
             _ => "Попади в зону, не задев буйки"
         };
 
@@ -54,6 +58,7 @@ namespace JumpGame
                 TaskKind.CleanTurns => r.entry == EntryKind.HeadClean && turns >= taskTurns,
                 TaskKind.CannonballInZone => r.entry == EntryKind.Cannonball && cleanZone,
                 TaskKind.NoTuck => !r.Failed && !r.usedTuck && cleanZone,
+                TaskKind.Bullseye => !r.Failed && r.bullseye,
                 _ => !r.Failed && cleanZone
             };
         }
@@ -71,6 +76,20 @@ namespace JumpGame
     [CreateAssetMenu(menuName = "Jump Game/Level Set")]
     public class LevelSet : ScriptableObject
     {
+        public string[] locations;
         public LevelInfo[] levels;
+
+        // Position of a level inside its location, counting from 1, and how many the location has.
+        public (int number, int count) PlaceInLocation(int index)
+        {
+            int loc = levels[index].location, number = 0, count = 0;
+            for (int i = 0; i < levels.Length; i++)
+            {
+                if (levels[i].location != loc) continue;
+                count++;
+                if (i <= index) number++;
+            }
+            return (number, count);
+        }
     }
 }

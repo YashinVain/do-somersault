@@ -46,26 +46,35 @@ namespace JumpGame
         }
 
         // The result screen is about to come up: let whatever is still floating fade now.
-        void FadeOut(DiveResult _)
+        void FadeOut(DiveResult r)
         {
             foreach (var p in active) p.age = Mathf.Max(p.age, life * 0.66f);
+            if (r.bullseye && !r.Failed)
+                ShowText($"<size=54><color=#FFD45A>В центр!</color></size>\n+{DiveScoring.CenterBonus}", diver.EntryPoint);
         }
 
         public void Show(int turns)
         {
+            int points = 2 * DiveScoring.PointsPerHalfTurn;
+            string label = turns == 1 ? "Оборот!" : turns + " оборота!";
+            // Stack a little higher for each turn so consecutive popups don't sit on top of each other.
+            Spawn($"<size=50><color=#FFD45A>+{points}</color></size>\n{label}",
+                  diver.transform.position, screenOffset + Vector2.up * (turns - 1) * 18f);
+        }
+
+        public void ShowText(string text, Vector3 world) => Spawn(text, world, new Vector2(0f, 90f));
+
+        void Spawn(string content, Vector3 world, Vector2 offset)
+        {
             if (area == null) Awake();
             var text = pool.Count > 0 ? pool.Pop() : Instantiate(template, area);
             text.gameObject.SetActive(true);
-
-            int points = 2 * DiveScoring.PointsPerHalfTurn;
-            string label = turns == 1 ? "Оборот!" : turns + " оборота!";
-            text.text = $"<size=50><color=#FFD45A>+{points}</color></size>\n{label}";
+            text.text = content;
 
             // Viewport maths keeps this right for any canvas mode and resolution.
-            Vector2 vp = view.WorldToViewportPoint(diver.transform.position);
+            Vector2 vp = view.WorldToViewportPoint(world);
             Vector2 local = (vp - new Vector2(0.5f, 0.5f)) * area.rect.size;
-            // Stack a little higher for each turn so consecutive popups don't sit on top of each other.
-            var p = new Popup { text = text, start = local + screenOffset + Vector2.up * (turns - 1) * 18f };
+            var p = new Popup { text = text, start = local + offset };
             active.Add(p);
             Place(p);
         }

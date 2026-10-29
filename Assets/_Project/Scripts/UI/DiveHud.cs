@@ -81,7 +81,9 @@ namespace JumpGame
             var saved = flow.Saved;
             if (saved == null) return;
 
-            levelTitle.text = $"Уровень {flow.Index + 1}  ·  {flow.Height:0.#} м".Replace('.', ',');
+            var (number, count) = flow.Set.PlaceInLocation(flow.Index);
+            string height = flow.Height.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+            levelTitle.text = $"{flow.LocationName(level.location)}  ·  {number}/{count}  ·  {height} м";
             int[] goals = { level.bronze, level.silver, level.gold };
             int stars = saved.stars[flow.Index];
             for (int i = 0; i < 3; i++)
@@ -182,6 +184,8 @@ namespace JumpGame
                 resultDetails.text = "Толчок был слишком слабым";
             else if (r.hitBuoys)
                 resultDetails.text = r.TurnsLabel + "   задел буйки";
+            else if (r.bullseye)
+                resultDetails.text = r.TurnsLabel + "   в самый центр ×" + r.multiplier.ToString("0.#");
             else
                 resultDetails.text = r.TurnsLabel + "   " + (r.inZone ? "в зоне ×" + r.multiplier.ToString("0.#") : "мимо зоны");
 
