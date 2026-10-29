@@ -157,7 +157,7 @@ namespace JumpGame
             resultPanel.localScale = new Vector3(s, s, 1f);
 
             // Tapping anywhere outside the buttons is a quick retry.
-            if (t > resultDelay + 0.3f && HoldInput.IsHeld)
+            if (t > resultDelay + 0.3f && diver.AcceptInput && HoldInput.IsHeld)
                 flow.Retry();
         }
 

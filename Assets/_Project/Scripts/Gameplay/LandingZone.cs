@@ -18,6 +18,12 @@ namespace JumpGame
         [SerializeField] float floatSpacing = 0.186f;
         [SerializeField] float floatHeight = 0.035f;
 
+        [Header("Drift")]
+        [SerializeField] float driftPeriod = 3.4f;
+
+        Vector3 anchor;
+        float drift;
+
         [Header("Float physics")]
         [SerializeField] float stiffness = 26f;
         [SerializeField] float damping = 3.2f;
@@ -53,9 +59,11 @@ namespace JumpGame
             return d.sqrMagnitude <= radius * radius;
         }
 
-        // Moves the ring and rebuilds the floats for a new radius.
-        public void Configure(Vector3 center, float newRadius)
+        // Moves the ring and rebuilds the floats for a new radius. A drift above zero makes it sway sideways.
+        public void Configure(Vector3 center, float newRadius, float newDrift = 0f)
         {
+            anchor = center;
+            drift = newDrift;
             transform.position = center;
             radius = newRadius;
             waves.Clear();
@@ -117,6 +125,9 @@ namespace JumpGame
             if (dt <= 0f) return;
             time += dt;
             waves.RemoveAll(w => time - w.start > 4f);
+
+            if (drift > 0f)
+                transform.position = anchor + Vector3.forward * (Mathf.Sin(time * Mathf.PI * 2f / driftPeriod) * drift);
 
             int n = floats.Length;
             for (int i = 0; i < n; i++)

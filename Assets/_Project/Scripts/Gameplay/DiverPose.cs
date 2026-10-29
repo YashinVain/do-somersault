@@ -39,6 +39,8 @@ namespace JumpGame
         public bool JustLaunched { get; set; }
         public bool HeadFirst { get; set; }
         public bool Underwater { get; set; }
+        // Fell off the edge while still holding: the crouch curls up instead of opening.
+        public bool Slipping { get; set; }
 
         float arm, elbow, spineBend, thigh, knee;
         float armVel, elbowVel, spineVel, thighVel, kneeVel;
@@ -66,7 +68,9 @@ namespace JumpGame
             {
                 airTime += dt;
                 // After a real takeoff the arms swing up; after a slip the body only opens when asked to.
-                Pose open = JustLaunched && airTime < 0.25f ? Reach : (HeadFirst ? Streamline : Pike);
+                Pose open = Slipping ? Crouch
+                    : JustLaunched && airTime < 0.25f ? Reach
+                    : HeadFirst ? Streamline : Pike;
                 target = Lerp(open, Tuck, Tucked);
             }
 
@@ -186,7 +190,7 @@ namespace JumpGame
         public void ResetPose()
         {
             Crouched = Tucked = 0f;
-            Airborne = JustLaunched = HeadFirst = Underwater = false;
+            Airborne = JustLaunched = HeadFirst = Underwater = Slipping = false;
             airTime = 0f;
             arm = Stand.arm;
             elbow = Stand.elbow;

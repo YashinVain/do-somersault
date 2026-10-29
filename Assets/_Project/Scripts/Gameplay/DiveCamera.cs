@@ -56,8 +56,10 @@ namespace JumpGame
             Quaternion rot = Quaternion.LookRotation(viewDirection);
             Vector3 right = rot * Vector3.right, up = rot * Vector3.up, fwd = rot * Vector3.forward;
 
-            Vector3 body = diver.transform.position;
-            if (diver.Current == Diver.State.Underwater) body.y = Mathf.Max(body.y, zone.WaterLevel + 0.3f);
+            // After the entry the shot stays on the splash, not on the body sinking below.
+            Vector3 body = diver.Current == Diver.State.Underwater
+                ? diver.EntryPoint + Vector3.up * 0.5f
+                : diver.transform.position;
             Vector3 ring = zone.transform.position;
             float r = zone.Radius + 0.2f;
 

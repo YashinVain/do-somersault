@@ -11,7 +11,8 @@ namespace JumpGame
         Turns,
         CleanTurns,
         CannonballInZone,
-        ZoneNoBuoys
+        ZoneNoBuoys,
+        NoTuck
     }
 
     [Serializable]
@@ -22,6 +23,8 @@ namespace JumpGame
         [Tooltip("Distance from the platform edge to the centre of the buoy ring, metres.")]
         public float zoneDistance = 4f;
         public float zoneRadius = 1.3f;
+        [Tooltip("The ring drifts sideways by this many metres each way. 0 keeps it still.")]
+        public float zoneDrift;
         public int bronze = 300, silver = 600, gold = 900;
         public TaskKind task;
         public float taskTurns;
@@ -35,6 +38,7 @@ namespace JumpGame
             TaskKind.Turns => "Сделай " + Turns(taskTurns),
             TaskKind.CleanTurns => "Чистый вход и " + Turns(taskTurns),
             TaskKind.CannonballInZone => "Бомбочка в зону",
+            TaskKind.NoTuck => "Попади в зону без группировки",
             _ => "Попади в зону, не задев буйки"
         };
 
@@ -49,6 +53,7 @@ namespace JumpGame
                 TaskKind.Turns => !r.Failed && turns >= taskTurns,
                 TaskKind.CleanTurns => r.entry == EntryKind.HeadClean && turns >= taskTurns,
                 TaskKind.CannonballInZone => r.entry == EntryKind.Cannonball && cleanZone,
+                TaskKind.NoTuck => !r.Failed && !r.usedTuck && cleanZone,
                 _ => !r.Failed && cleanZone
             };
         }

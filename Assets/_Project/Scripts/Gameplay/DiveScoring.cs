@@ -21,6 +21,7 @@ namespace JumpGame
         public int halfTurns;
         public bool inZone;
         public bool hitBuoys;
+        public bool usedTuck;
         public float multiplier;
         public int score;
 
@@ -52,7 +53,7 @@ namespace JumpGame
 
     public static class DiveScoring
     {
-        const int PointsPerHalfTurn = 100;
+        public const int PointsPerHalfTurn = 100;
 
         // Slipped, hit the tower or never left it: no points.
         public static DiveResult Fail(EntryKind kind, bool inZone) => new DiveResult
@@ -63,14 +64,14 @@ namespace JumpGame
         };
 
         // rotation: total forward rotation in degrees since leaving the stand (0 = upright).
-        // Touching the buoy rope cancels the zone bonus.
+        // Only dives inside the ring score. Touching the rope on the way in cancels the ring bonus.
         public static DiveResult Evaluate(float rotation, float tuck, bool inZone, bool hitBuoys, float zoneMultiplier)
         {
             var r = new DiveResult
             {
                 inZone = inZone,
                 hitBuoys = hitBuoys,
-                multiplier = inZone && !hitBuoys ? zoneMultiplier : 1f,
+                multiplier = !inZone ? 0f : hitBuoys ? 1f : zoneMultiplier,
                 halfTurns = Mathf.Max(0, Mathf.RoundToInt(rotation / 180f))
             };
 

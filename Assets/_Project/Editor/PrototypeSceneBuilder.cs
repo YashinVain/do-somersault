@@ -32,7 +32,7 @@ namespace JumpGame.EditorTools
         };
 
         // Meshes
-        static Mesh cube, hex, disc, rough, cone, drop;
+        static Mesh cube, hex, rough, cone, drop;
 
         [MenuItem("Jump Game/Build Prototype Scene")]
         public static void Build()
@@ -79,7 +79,6 @@ namespace JumpGame.EditorTools
             Object.DestroyImmediate(tmp);
 
             hex = LowPolyMeshes.Prism("Hex", 6, 0.5f, 0.5f, 1f);
-            disc = LowPolyMeshes.Lathe("RippleRing", new[] { new Vector2(0.43f, 0f), new Vector2(0.5f, 0f) }, 32, true);
             cone = LowPolyMeshes.Prism("Cone", 8, 0.5f, 0f, 1f);
             rough = LowPolyMeshes.Icosphere("Rough", 1, 0.5f, 0.14f, 7);
             drop = LowPolyMeshes.Icosphere("Drop", 0, 0.5f);
@@ -125,7 +124,7 @@ namespace JumpGame.EditorTools
             var tile = Mat("PoolTile", "#6CC4D4");
             var line = Mat("PoolLine", "#245F92");
             var coping = Mat("Coping", "#F4F2EC");
-            var water = Mat("Water", "#1C98B8", transparent: true, alpha: 0.7f, smoothness: 0.6f);
+            var water = Mat("Water", "#1C98B8", transparent: true, alpha: 0.82f, smoothness: 0.6f);
 
             float floorY = -PoolDepth;
             float w = PoolX.y - PoolX.x, l = PoolZ.y - PoolZ.x;
@@ -245,25 +244,54 @@ namespace JumpGame.EditorTools
                 AssetDatabase.CreateAsset(set, LevelsPath);
             }
 
-            LevelInfo L(int platform, float distance, float radius, int b, int s, int g, TaskKind task, float turns = 0f) => new LevelInfo
+            LevelInfo L(int platform, float distance, float radius, float drift, TaskKind task, float turns = 0f) => new LevelInfo
             {
-                platform = platform, zoneDistance = distance, zoneRadius = radius,
-                bronze = b, silver = s, gold = g, task = task, taskTurns = turns
+                platform = platform, zoneDistance = distance, zoneRadius = radius, zoneDrift = drift,
+                task = task, taskTurns = turns
             };
 
-            set.levels = new[]
+            // Probe, straight dives: 3 m reaches 1.6-5.2 m, 5 m 1.9-5.9, 7.5 m 2.2-6.7, 10 m 2.4-7.5.
+            // Max turns: 2 / 2 / 2.5 / 3, clean head-first: 1.5 / 1.5 / 2.5 / 2.5.
+            // Medal thresholds are filled in by DiveCapture.TuneLevels from the best dive it can find.
+            var layout = new[]
             {
-                // Probe, straight dives: 3 m reaches 1.6-5.2 m, 5 m 1.9-5.9, 7.5 m 2.2-6.7, 10 m 2.4-7.5.
-                // Max turns: 2 / 2 / 2.5 / 3, clean head-first: 1.5 / 1.5 / 2.5 / 2.5. Gold sits near the best possible dive.
-                L(0, 2.2f, 1.6f, 150, 300, 500, TaskKind.HeadFirst),
-                L(0, 3.0f, 1.4f, 200, 450, 700, TaskKind.FeetFirst),
-                L(1, 3.5f, 1.3f, 250, 500, 800, TaskKind.Turns, 1f),
-                L(1, 4.3f, 1.1f, 300, 550, 850, TaskKind.CannonballInZone),
-                L(2, 4.0f, 1.2f, 350, 700, 1100, TaskKind.Turns, 1.5f),
-                L(2, 5.2f, 1.0f, 400, 750, 1150, TaskKind.ZoneNoBuoys),
-                L(3, 4.6f, 1.1f, 450, 850, 1200, TaskKind.Turns, 2f),
-                L(3, 6.0f, 0.9f, 500, 950, 1300, TaskKind.CleanTurns, 2.5f)
+                L(0, 2.2f, 1.6f, 0f, TaskKind.HeadFirst),
+                L(0, 3.0f, 1.4f, 0f, TaskKind.FeetFirst),
+                L(1, 3.5f, 1.3f, 0f, TaskKind.Turns, 1f),
+                L(1, 4.3f, 1.1f, 0f, TaskKind.CannonballInZone),
+                L(2, 4.0f, 1.2f, 0f, TaskKind.Turns, 1.5f),
+                L(2, 5.2f, 1.0f, 0f, TaskKind.ZoneNoBuoys),
+                L(3, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
+                L(3, 6.0f, 0.9f, 0f, TaskKind.CleanTurns, 2.5f),
+
+                L(0, 2.0f, 0.9f, 0f, TaskKind.NoTuck),
+                L(0, 3.6f, 1.1f, 0f, TaskKind.CleanTurns, 1.5f),
+                L(1, 3.2f, 1.2f, 1.0f, TaskKind.HeadFirst),
+                L(1, 5.0f, 1.0f, 0f, TaskKind.Turns, 2f),
+                L(2, 3.6f, 1.1f, 1.2f, TaskKind.CannonballInZone),
+                L(2, 6.0f, 1.0f, 0f, TaskKind.CleanTurns, 2.5f),
+                L(3, 5.4f, 1.0f, 1.4f, TaskKind.Turns, 2.5f),
+                L(3, 7.0f, 0.9f, 0f, TaskKind.Turns, 3f)
             };
+
+            // Keep tuned thresholds for levels whose layout did not change.
+            var old = set.levels;
+            for (int i = 0; i < layout.Length; i++)
+            {
+                var o = old != null && i < old.Length ? old[i] : null;
+                bool same = o != null && o.platform == layout[i].platform && o.task == layout[i].task
+                    && Mathf.Approximately(o.zoneDistance, layout[i].zoneDistance)
+                    && Mathf.Approximately(o.zoneRadius, layout[i].zoneRadius)
+                    && Mathf.Approximately(o.zoneDrift, layout[i].zoneDrift);
+                if (same)
+                {
+                    layout[i].bronze = o.bronze;
+                    layout[i].silver = o.silver;
+                    layout[i].gold = o.gold;
+                }
+            }
+
+            set.levels = layout;
             EditorUtility.SetDirty(set);
             return set;
         }
@@ -398,49 +426,95 @@ namespace JumpGame.EditorTools
 
         static Splash BuildSplash()
         {
-            var foam = Mat("Foam", "#EEFBFF", smoothness: 0.5f);
+            var spray = Mat("Spray", "#FFFFFF", shader: "Legacy Shaders/Particles/Alpha Blended");
+            spray.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f));
 
             var go = new GameObject("Splash");
-            go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
 
-            var ps = go.AddComponent<ParticleSystem>();
-            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem Particles(string n, float angle, float radius, Vector2 life, Vector2 speed, Vector2 size, float gravity, Color color)
+            {
+                var child = new GameObject(n);
+                child.transform.SetParent(go.transform, false);
+                child.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 
-            var main = ps.main;
-            main.loop = false;
-            main.playOnAwake = false;
-            main.duration = 1f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.7f, 1.3f);
-            main.startRotation3D = true;
-            main.gravityModifier = 1.3f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 400;
+                var ps = child.AddComponent<ParticleSystem>();
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
-            var emission = ps.emission;
-            emission.rateOverTime = 0f;
+                var main = ps.main;
+                main.loop = false;
+                main.playOnAwake = false;
+                main.duration = 1f;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(life.x, life.y);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(speed.x, speed.y);
+                main.startSize = new ParticleSystem.MinMaxCurve(size.x, size.y);
+                main.startRotation3D = true;
+                main.startColor = color;
+                main.gravityModifier = gravity;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.maxParticles = 300;
 
-            var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 24f;
-            shape.radius = 0.25f;
+                var emission = ps.emission;
+                emission.rateOverTime = 0f;
 
-            var size = ps.sizeOverLifetime;
-            size.enabled = true;
-            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0.15f));
+                var shape = ps.shape;
+                if (angle > 0f)
+                {
+                    shape.shapeType = ParticleSystemShapeType.Cone;
+                    shape.angle = angle;
+                    shape.radius = radius;
+                }
+                else
+                {
+                    shape.shapeType = ParticleSystemShapeType.Sphere;
+                    shape.radius = radius;
+                }
 
-            var renderer = go.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Mesh;
-            renderer.mesh = drop;
-            renderer.sharedMaterial = foam;
+                var fade = ps.colorOverLifetime;
+                fade.enabled = true;
+                var g = new Gradient();
+                g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                          new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.6f), new GradientAlphaKey(0f, 1f) });
+                fade.color = g;
 
-            var ripple = Put(disc, "Ripple", null, Vector3.zero, Vector3.one, foam);
-            ripple.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
-            ripple.gameObject.SetActive(false);
+                var shrink = ps.sizeOverLifetime;
+                shrink.enabled = true;
+                shrink.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, 0.3f));
+
+                var renderer = child.GetComponent<ParticleSystemRenderer>();
+                renderer.renderMode = ParticleSystemRenderMode.Mesh;
+                renderer.mesh = drop;
+                renderer.sharedMaterial = spray;
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                return ps;
+            }
+
+            var white = new Color(0.95f, 0.99f, 1f, 0.95f);
+            var crown = Particles("Crown", 32f, 0.2f, new Vector2(0.5f, 1f), new Vector2(0.55f, 1f), new Vector2(0.6f, 1.4f), 1.4f, white);
+            var jet = Particles("Jet", 7f, 0.08f, new Vector2(0.6f, 1f), new Vector2(0.7f, 1f), new Vector2(0.06f, 0.12f), 1.2f, white);
+            var bubbles = Particles("Bubbles", 0f, 0.35f, new Vector2(0.8f, 1.8f), new Vector2(0.1f, 0.35f), new Vector2(0.04f, 0.1f), -0.12f, new Color(0.85f, 0.97f, 1f, 0.7f));
+
+            var foamMesh = LowPolyMeshes.SoftRing("SoftFoam", 0f, 0.5f, 40, 6);
+            var ringMesh = LowPolyMeshes.SoftRing("SoftRipple", 0.38f, 0.5f, 48, 4);
+
+            Renderer Flat(Mesh mesh, string n, float y)
+            {
+                var t = Put(mesh, n, go.transform, new Vector3(0f, y, 0f), Vector3.one, spray);
+                var r = t.GetComponent<MeshRenderer>();
+                r.shadowCastingMode = ShadowCastingMode.Off;
+                r.enabled = false;
+                return r;
+            }
+
+            var foam = Flat(foamMesh, "Foam", 0.012f);
+            var ripples = new Renderer[3];
+            for (int i = 0; i < ripples.Length; i++) ripples[i] = Flat(ringMesh, "Ripple_" + i, 0.016f + i * 0.002f);
 
             var splash = go.AddComponent<Splash>();
-            Link(splash, "ripple", ripple);
+            Link(splash, "crown", crown);
+            Link(splash, "jet", jet);
+            Link(splash, "bubbles", bubbles);
+            Link(splash, "foam", foam);
+            LinkArray(splash, "ripples", ripples);
             return splash;
         }
 
@@ -647,7 +721,18 @@ namespace JumpGame.EditorTools
                 return t;
             }
 
-            var root = canvasGo.transform;
+            RectTransform Stretch(string n, Transform parent)
+            {
+                var go = new GameObject(n, typeof(RectTransform));
+                go.transform.SetParent(parent, false);
+                var rt = (RectTransform)go.transform;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                return rt;
+            }
+
+            var root = Stretch("HudRoot", canvasGo.transform);
             var top = new Vector2(0.5f, 1f);
             var topLeft = new Vector2(0f, 1f);
             var topRight = new Vector2(1f, 1f);
@@ -669,7 +754,8 @@ namespace JumpGame.EditorTools
             }
             var taskDot = Dot("TaskDot", root, topLeft, new Vector2(32f, -74f), 22f);
             var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(520f, 34f), 24, TextAnchor.MiddleLeft);
-            var best = Label("Best", root, topRight, new Vector2(-28f, -22f), new Vector2(360f, 50f), 28, TextAnchor.MiddleRight);
+            var menuButton = Btn("Menu", root, topRight, new Vector2(-24f, -18f), new Vector2(120f, 56f), "Меню", "#2BA39C", 26);
+            var best = Label("Best", root, topRight, new Vector2(-28f, -84f), new Vector2(360f, 40f), 26, TextAnchor.MiddleRight);
 
             var turns = Label("Turns", root, top, new Vector2(0f, -90f), new Vector2(600f, 130f), 96, TextAnchor.UpperCenter);
             var hint = Label("Hint", root, new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1100f, 120f), 32, TextAnchor.LowerCenter);
@@ -718,6 +804,92 @@ namespace JumpGame.EditorTools
             Link(hud, "resultTask", task);
             Link(hud, "retryButton", retry);
             Link(hud, "nextLevelButton", nextLevel);
+
+            // "+200 / Оборот!" popups.
+            var popupArea = Stretch("Popups", root);
+            var popupTemplate = Label("Popup", popupArea, center, Vector2.zero, new Vector2(320f, 110f), 28, TextAnchor.MiddleCenter);
+            popupTemplate.lineSpacing = 0.85f;
+            var popups = popupArea.gameObject.AddComponent<TurnPopups>();
+            Link(popups, "diver", diver);
+            Link(popups, "view", Object.FindAnyObjectByType<Camera>());
+            Link(popups, "template", popupTemplate);
+
+            BuildMenu(canvasGo.transform, root.gameObject, flow, diver, menuButton, Stretch, Rect, Btn, Label, knob);
+        }
+
+        delegate RectTransform StretchFn(string n, Transform parent);
+        delegate RectTransform RectFn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size);
+        delegate Button ButtonFn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, string label, string color, int fontSize);
+        delegate Text LabelFn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, int fontSize, TextAnchor align, FontStyle style = FontStyle.Bold);
+
+        static void BuildMenu(Transform canvas, GameObject hudRoot, GameFlow flow, Diver diver, Button menuButton,
+            StretchFn Stretch, RectFn Rect, ButtonFn Btn, LabelFn Label, Sprite knob)
+        {
+            var center = new Vector2(0.5f, 0.5f);
+
+            Image Shade(Transform parent, Color c)
+            {
+                var img = Stretch("Shade", parent).gameObject.AddComponent<Image>();
+                img.color = c;
+                return img;
+            }
+
+            // Title.
+            var main = Stretch("TitleScreen", canvas);
+            Shade(main, new Color(0.06f, 0.1f, 0.2f, 0.35f));
+            var title = Label("Title", main, center, new Vector2(0f, 170f), new Vector2(1000f, 160f), 132, TextAnchor.MiddleCenter);
+            title.text = "НЫРЯЙ!";
+            title.color = Hex("#FFD45A");
+            var sub = Label("Subtitle", main, center, new Vector2(0f, 75f), new Vector2(800f, 50f), 36, TextAnchor.MiddleCenter, FontStyle.Normal);
+            sub.text = "прыжки с вышки";
+            var play = Btn("Play", main, center, new Vector2(0f, -40f), new Vector2(340f, 96f), "Играть", "#EE6A55", 44);
+            var levels = Btn("Levels", main, center, new Vector2(0f, -150f), new Vector2(300f, 76f), "Уровни", "#2BA39C", 34);
+            var medals = Label("Medals", main, new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(800f, 40f), 28, TextAnchor.MiddleCenter, FontStyle.Normal);
+
+            // Level grid.
+            var levelsPanel = Stretch("LevelScreen", canvas);
+            Shade(levelsPanel, new Color(0.06f, 0.1f, 0.2f, 0.55f));
+            var heading = Label("Heading", levelsPanel, new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(800f, 70f), 54, TextAnchor.MiddleCenter);
+            heading.text = "Уровни";
+            var back = Btn("Back", levelsPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(150f, 60f), "Назад", "#2BA39C", 28);
+
+            var gridRt = Rect("Grid", levelsPanel, center, new Vector2(0f, -30f), new Vector2(1100f, 480f));
+            var layout = gridRt.gameObject.AddComponent<GridLayoutGroup>();
+            layout.cellSize = new Vector2(124f, 136f);
+            layout.spacing = new Vector2(16f, 18f);
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            layout.constraintCount = 8;
+
+            var card = Btn("CardTemplate", gridRt, center, Vector2.zero, new Vector2(124f, 136f), "", "#2BA39C", 10);
+            Object.DestroyImmediate(card.transform.Find("Label").gameObject);
+            Label("Number", card.transform, center, new Vector2(0f, 22f), new Vector2(120f, 60f), 50, TextAnchor.MiddleCenter);
+            Label("Height", card.transform, center, new Vector2(0f, -22f), new Vector2(120f, 30f), 22, TextAnchor.MiddleCenter, FontStyle.Normal);
+            var medalRow = Rect("Medals", card.transform, center, new Vector2(0f, -50f), new Vector2(110f, 24f));
+            for (int i = 0; i < 3; i++)
+            {
+                var dot = Rect("Dot_" + i, medalRow, center, new Vector2((i - 1) * 28f, 0f), new Vector2(20f, 20f)).gameObject.AddComponent<Image>();
+                dot.sprite = knob;
+                dot.raycastTarget = false;
+            }
+
+            levelsPanel.gameObject.SetActive(false);
+            card.gameObject.SetActive(false);
+
+            var menu = canvas.gameObject.AddComponent<MenuScreen>();
+            Link(menu, "flow", flow);
+            Link(menu, "diver", diver);
+            Link(menu, "hud", hudRoot);
+            Link(menu, "mainPanel", main.gameObject);
+            Link(menu, "playButton", play);
+            Link(menu, "levelsButton", levels);
+            Link(menu, "playLabel", play.GetComponentInChildren<Text>());
+            Link(menu, "medalCount", medals);
+            Link(menu, "levelsPanel", levelsPanel.gameObject);
+            Link(menu, "backButton", back);
+            Link(menu, "grid", gridRt);
+            Link(menu, "cardTemplate", card);
+            Link(menu, "menuButton", menuButton);
         }
 
         static void LinkArray(Object owner, string field, Object[] values)

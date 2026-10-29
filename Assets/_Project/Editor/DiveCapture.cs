@@ -9,7 +9,7 @@ using UnityEngine.UI;
 namespace JumpGame.EditorTools
 {
     // Simulates scripted dives in edit mode and renders contact sheets into Logs/ for a quick look at the motion.
-    // Also probes what each platform allows (distance range, turns) to tune the level list.
+    // Also searches for the best dive on every level to set the medal thresholds.
     public static class DiveCapture
     {
         const int FrameW = 480, FrameH = 270, Columns = 4;
@@ -29,16 +29,41 @@ namespace JumpGame.EditorTools
         static Camera cam;
         static GameFlow flow;
         static DiveHud hud;
+        static MenuScreen menu;
+        static Splash splash;
+        static TurnPopups popups;
         static DiveOutcome? lastOutcome;
 
         public static void BuildAndCapture()
         {
             PrototypeSceneBuilder.Build();
-            Run();
+            Open();
+            TuneLevels();
+            Capture();
+        }
+
+        public static void BuildAndCaptureQuick()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            Capture();
         }
 
         [MenuItem("Jump Game/Capture Dive Frames")]
         public static void Run()
+        {
+            Open();
+            Capture();
+        }
+
+        [MenuItem("Jump Game/Tune Level Medals")]
+        public static void Tune()
+        {
+            Open();
+            TuneLevels();
+        }
+
+        static void Open()
         {
             EditorSceneManager.OpenScene(PrototypeSceneBuilder.ScenePath);
             diver = UnityEngine.Object.FindAnyObjectByType<Diver>();
@@ -46,6 +71,9 @@ namespace JumpGame.EditorTools
             follow = UnityEngine.Object.FindAnyObjectByType<DiveCamera>();
             flow = UnityEngine.Object.FindAnyObjectByType<GameFlow>();
             hud = UnityEngine.Object.FindAnyObjectByType<DiveHud>();
+            menu = UnityEngine.Object.FindAnyObjectByType<MenuScreen>();
+            splash = UnityEngine.Object.FindAnyObjectByType<Splash>();
+            popups = UnityEngine.Object.FindAnyObjectByType<TurnPopups>();
             cam = follow.GetComponent<Camera>();
 
             Directory.CreateDirectory("Logs");
@@ -53,11 +81,20 @@ namespace JumpGame.EditorTools
             flow.Persist = false;
             flow.Begin();
             flow.Finished += o => lastOutcome = o;
+            diver.TurnCompleted += popups.Show;
+            diver.Restarted += popups.Clear;
+        }
 
-            Probe();
+        static void Capture()
+        {
             CaptureLevels();
 
             flow.Load(2);
+            menu.Preview(0);
+            CaptureUi("Logs/capture_menu.png", null);
+            menu.Preview(1);
+            CaptureUi("Logs/capture_menu_levels.png", null);
+            menu.Preview(-1);
             CaptureUi("Logs/capture_ui_ready.png", null);
 
             var scenarios = new[]
@@ -66,75 +103,88 @@ namespace JumpGame.EditorTools
                 {
                     name = "good", level = 2,
                     held = t => t < 1.0f || (t > 1.12f && t < 1.95f),
-                    frames = new[] { 0f, 0.5f, 0.95f, 1.1f, 1.3f, 1.5f, 1.7f, 1.9f, 2.1f, 2.3f, 2.5f, 2.9f }
+                    frames = new[] { 0.95f, 1.3f, 1.6f, 1.9f, 2.2f, 2.5f, 2.6f, 2.7f, 2.85f, 3.0f, 3.3f, 3.7f }
                 },
                 new Scenario
                 {
                     name = "slip", level = 2,
                     held = t => t < 3.5f,
-                    frames = new[] { 0.4f, 0.9f, 1.2f, 1.4f, 1.6f, 1.8f, 2.0f, 2.2f, 2.4f, 2.6f, 2.8f, 3.1f }
+                    frames = new[] { 0.9f, 1.2f, 1.35f, 1.45f, 1.55f, 1.65f, 1.75f, 1.9f, 2.05f, 2.2f, 2.35f, 2.6f }
                 },
                 new Scenario
                 {
-                    name = "tap", level = 2,
-                    held = t => t < 0.08f,
-                    frames = new[] { 0.1f, 0.25f, 0.4f, 0.55f, 0.7f, 0.85f, 1.0f, 1.2f, 1.4f, 1.7f, 2.0f, 2.4f }
-                },
-                new Scenario
-                {
-                    name = "high", level = 6,
-                    held = t => t < 1.0f || (t > 1.12f && t < 2.3f),
-                    frames = new[] { 0.9f, 1.2f, 1.5f, 1.8f, 2.1f, 2.4f, 2.7f, 3.0f, 3.2f, 3.4f, 3.6f, 3.9f }
+                    name = "flop", level = 4,
+                    held = t => t < 0.8f,
+                    frames = new[] { 1.8f, 2.0f, 2.1f, 2.2f, 2.3f, 2.4f, 2.5f, 2.7f, 2.9f, 3.2f, 3.6f, 4.0f }
                 }
             };
 
             foreach (var s in scenarios)
                 RunScenario(s);
 
-            // Result screen of the last good dive.
+            // HUD mid-flight with a turn popup, then the result screen.
             flow.Load(2);
             lastOutcome = null;
-            Simulate(scenarios[0].held, 3f);
+            Simulate(scenarios[0].held, 2.0f, false);
+            var shown = popups.GetComponentsInChildren<Text>(false);
+            Debug.Log($"POPUPS active={shown.Length} rot={diver.Rotation:0} " +
+                      (shown.Length > 0 ? $"pos={shown[0].rectTransform.anchoredPosition} a={shown[0].color.a:0.00} text={shown[0].text}" : ""));
+            CaptureUi("Logs/capture_ui_flight.png", null, keepState: true);
+            Simulate(scenarios[0].held, 3.6f, true);
             CaptureUi("Logs/capture_ui_result.png", lastOutcome);
 
             Debug.Log("DiveCapture done");
         }
 
-        static void Probe()
+        // Brute force over hold time and tuck length: the best score on each level sets its medals.
+        static void TuneLevels()
         {
-            var sb = new StringBuilder("PROBE\n");
-            for (int p = 0; p < 4; p++)
+            var set = LevelSetAsset();
+            var sb = new StringBuilder("TUNE\n");
+
+            for (int i = 0; i < set.levels.Length; i++)
             {
-                int level = Array.FindIndex(LevelsOf(), l => l.platform == p);
-                flow.Load(level);
+                var level = set.levels[i];
+                flow.Load(i);
+                zone.Configure(zone.transform.position, level.zoneRadius, 0f);
 
-                sb.Append($" platform {flow.Height}m\n  straight:");
-                for (float hold = 0.3f; hold <= 1.36f; hold += 0.1f)
+                int best = 0;
+                bool taskPossible = false;
+                string bestDive = "";
+                for (float hold = 0.3f; hold <= 1.38f; hold += 0.04f)
                 {
-                    float h = hold;
-                    Simulate(t => t < h, 5f);
-                    sb.Append($" {h:0.0}s->{Distance():0.0}m/{diver.LastResult.entry}");
+                    for (float tuck = 0f; tuck <= 2.6f; tuck += 0.06f)
+                    {
+                        float h = hold, d = tuck;
+                        Simulate(t => t < h || (d > 0f && t > h + 0.1f && t < h + 0.1f + d), 6f, true);
+                        var r = diver.LastResult;
+                        if (r.score > best)
+                        {
+                            best = r.score;
+                            bestDive = $"hold {h:0.00} tuck {d:0.00} -> {r.entry} {r.halfTurns / 2f} turns";
+                        }
+                        if (level.TaskDone(r)) taskPossible = true;
+                    }
                 }
 
-                int maxTurns = 0, maxClean = 0;
-                float bestTuck = 0f, bestCleanTuck = 0f;
-                for (float tuck = 0.1f; tuck <= 2.6f; tuck += 0.02f)
-                {
-                    float d = tuck;
-                    Simulate(t => t < 1.0f || (t > 1.12f && t < 1.12f + d), 6f);
-                    var r = diver.LastResult;
-                    if (!r.Failed && r.halfTurns > maxTurns) { maxTurns = r.halfTurns; bestTuck = d; }
-                    if (r.entry == EntryKind.HeadClean && r.halfTurns > maxClean) { maxClean = r.halfTurns; bestCleanTuck = d; }
-                }
-                sb.Append($"\n  max turns {maxTurns / 2f} (tuck {bestTuck:0.00}s), max clean head {maxClean / 2f} (tuck {bestCleanTuck:0.00}s)\n");
+                level.gold = Round(best * 0.8f);
+                level.silver = Round(best * 0.55f);
+                level.bronze = Round(best * 0.3f);
+                sb.Append($" L{i + 1} {flow.Height}m d{level.zoneDistance} r{level.zoneRadius}: best {best} ({bestDive}) " +
+                          $"-> {level.bronze}/{level.silver}/{level.gold}, task '{level.TaskText}' possible={taskPossible}\n");
             }
+
+            EditorUtility.SetDirty(set);
+            AssetDatabase.SaveAssets();
             Debug.Log(sb.ToString());
         }
 
-        static LevelInfo[] LevelsOf()
+        static int Round(float v) => Mathf.Max(50, Mathf.FloorToInt(v / 50f) * 50);
+
+        static LevelSet LevelSetAsset()
         {
             var so = new SerializedObject(flow);
-            return ((LevelSet)so.FindProperty("levels").objectReferenceValue).levels;
+            return (LevelSet)so.FindProperty("levels").objectReferenceValue;
         }
 
         static float Distance()
@@ -143,7 +193,7 @@ namespace JumpGame.EditorTools
             return Vector3.Dot(diver.EntryPoint - edge.position, edge.forward);
         }
 
-        static void Simulate(Func<float, bool> held, float seconds)
+        static void Simulate(Func<float, bool> held, float seconds, bool stopAtEntry)
         {
             diver.ResetToStart();
             diver.Step(Dt, false);
@@ -151,7 +201,13 @@ namespace JumpGame.EditorTools
             {
                 diver.Step(Dt, held(t));
                 zone.Step(Dt);
-                if (diver.Current == Diver.State.Underwater) break;
+                if (!stopAtEntry)
+                {
+                    splash.Step(Dt);
+                    popups.Step(Dt);
+                    follow.Step(Dt);
+                }
+                if (stopAtEntry && diver.Current == Diver.State.Underwater) break;
             }
         }
 
@@ -194,6 +250,7 @@ namespace JumpGame.EditorTools
 
                 diver.Step(Dt, s.held(t));
                 zone.Step(Dt);
+                splash.Step(Dt);
                 follow.Step(Dt);
                 t += Dt;
 
@@ -211,7 +268,7 @@ namespace JumpGame.EditorTools
         }
 
         // Renders the scene with the HUD drawn into the same image.
-        static void CaptureUi(string path, DiveOutcome? result)
+        static void CaptureUi(string path, DiveOutcome? result, bool keepState = false)
         {
             const int w = 1280, h = 720;
             var canvas = hud.GetComponent<Canvas>();
@@ -219,11 +276,13 @@ namespace JumpGame.EditorTools
             var mode = canvas.renderMode;
 
             cam.aspect = w / (float)h;
-            follow.Snap();
-            hud.Preview(result);
+            if (!keepState)
+            {
+                follow.Snap();
+                hud.Preview(result);
+            }
 
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
-            cam.aspect = w / (float)h;
             cam.targetTexture = rt;
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = cam;

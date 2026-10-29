@@ -136,6 +136,43 @@ namespace JumpGame.EditorTools
             return Lathe(name, p, sides, true);
         }
 
+        // Flat ring facing up with alpha in the vertex colours: 0 at both edges, 1 in the middle.
+        // With inner = 0 it becomes a disc that is opaque in the centre and fades out to the rim.
+        public static Mesh SoftRing(string name, float inner, float outer, int sides = 40, int bands = 6)
+        {
+            var verts = new List<Vector3>();
+            var colors = new List<Color>();
+            var tris = new List<int>();
+            int row = sides + 1;
+
+            for (int k = 0; k <= bands; k++)
+            {
+                float u = k / (float)bands;
+                float r = Mathf.Lerp(inner, outer, u);
+                float a = inner > 0f ? Mathf.Sin(u * Mathf.PI) : 1f - u * u;
+                for (int j = 0; j <= sides; j++)
+                {
+                    float ang = j / (float)sides * Mathf.PI * 2f;
+                    verts.Add(new Vector3(Mathf.Cos(ang) * r, 0f, Mathf.Sin(ang) * r));
+                    colors.Add(new Color(1f, 1f, 1f, a));
+                }
+            }
+
+            for (int k = 0; k < bands; k++)
+                for (int j = 0; j < sides; j++)
+                {
+                    int i0 = k * row + j, i1 = i0 + 1, o0 = i0 + row, o1 = o0 + 1;
+                    tris.AddRange(new[] { i0, o1, o0, i0, i1, o1 });
+                }
+
+            var normals = new List<Vector3>();
+            foreach (var _ in verts) normals.Add(Vector3.up);
+            var mesh = Save(name, verts, normals, tris);
+            mesh.SetColors(colors);
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
         static int Mid(List<Vector3> p, Dictionary<long, int> cache, int a, int b)
         {
             long key = a < b ? ((long)a << 32) | (uint)b : ((long)b << 32) | (uint)a;

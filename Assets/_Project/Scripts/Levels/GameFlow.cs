@@ -33,6 +33,7 @@ namespace JumpGame
         public int Count => levels.levels.Length;
         public LevelInfo Level => levels.levels[current];
         public float Height => tower.Height(Level.platform);
+        public float HeightOf(int index) => tower.Height(levels.levels[index].platform);
         public ProgressData Saved => progress;
         public bool CanGoNext => current + 1 < Count && current + 1 < progress.unlocked;
         public bool CanGoBack => current > 0;
@@ -87,7 +88,7 @@ namespace JumpGame
 
             Vector3 center = edge.position + edge.forward * level.zoneDistance;
             center.y = zone.WaterLevel;
-            zone.Configure(center, level.zoneRadius);
+            zone.Configure(center, level.zoneRadius, level.zoneDrift);
 
             // Film from the outer side of the platform so the rest of the tower stays behind the diver.
             cam.SetSide(edge.position.x > 0.1f ? -1f : 1f);

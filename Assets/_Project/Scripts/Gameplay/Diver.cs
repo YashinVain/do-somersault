@@ -27,6 +27,11 @@ namespace JumpGame
 
         [Header("Flight")]
         [SerializeField] float gravity = 9.81f;
+        [Tooltip("Seconds to fold into a full tuck and to open from it.")]
+        [SerializeField] float tuckInTime = 0.16f;
+        [SerializeField] float tuckOutTime = 0.12f;
+        [Tooltip("After a slip the body keeps curling slowly from the crouch while the button is held.")]
+        [SerializeField] float slipCurlTime = 0.7f;
 
         [Header("Contact with the tower")]
         [SerializeField] float restitution = 0.2f;
@@ -52,8 +57,16 @@ namespace JumpGame
         public DiveResult LastResult { get; private set; }
         public Vector3 EntryPoint { get; private set; }
 
+        public bool UsedTuck { get; private set; }
+        // Off while menus are open.
+        public bool AcceptInput { get; set; } = true;
+
         public event Action<DiveResult> Entered;
         public event Action Restarted;
+        // Number of full somersaults done so far in this dive.
+        public event Action<int> TurnCompleted;
+
+        int turnsAnnounced;
 
         Vector3 startPosition;
         Quaternion startRotation;
@@ -84,7 +97,7 @@ namespace JumpGame
             initialized = true;
         }
 
-        void Update() => Step(Time.deltaTime, HoldInput.IsHeld);
+        void Update() => Step(Time.deltaTime, AcceptInput && HoldInput.IsHeld);
 
         public void Step(float dt, bool held)
         {
@@ -171,7 +184,8 @@ namespace JumpGame
         {
             velocity = comVelocity;
             Slipped = true;
-            tuck = held ? 1f : 0f;
+            tuck = 0f;
+            pose.Slipping = held;
             Launch(leanVel * pose.Inertia(pose.LocalCenterOfMass()));
         }
 
@@ -183,14 +197,21 @@ namespace JumpGame
             pose.Airborne = true;
             pose.Tucked = tuck;
             hitBuoys = hitTower = stuck = false;
+            UsedTuck = false;
+            turnsAnnounced = 0;
             restTimer = 0f;
             Current = State.Airborne;
         }
 
         void UpdateFlight(float dt, bool held)
         {
-            tuck = held ? 1f : 0f;
-            pose.Tucked = tuck;
+            // Releasing after a slip is the player's call to open up; until then the crouch just curls in.
+            if (!held) pose.Slipping = false;
+            float time = !held ? tuckOutTime : pose.Slipping ? slipCurlTime : tuckInTime;
+            tuck = Mathf.MoveTowards(tuck, held ? 1f : 0f, dt / time);
+            if (tuck > 0.5f) UsedTuck = true;
+
+            pose.Tucked = tuck * tuck * (3f - 2f * tuck);
             pose.HeadFirst = IsHeadingDown();
             pose.Step(dt);
 
@@ -198,6 +219,13 @@ namespace JumpGame
             Vector3 localCom = pose.LocalCenterOfMass();
             Spin = angularMomentum / pose.Inertia(localCom);
             Rotation += Spin * dt;
+
+            int turns = Mathf.FloorToInt(Rotation / 360f);
+            if (turns > turnsAnnounced && !Slipped)
+            {
+                turnsAnnounced = turns;
+                TurnCompleted?.Invoke(turns);
+            }
 
             velocity += Vector3.down * gravity * dt;
             com += velocity * dt;
@@ -303,9 +331,12 @@ namespace JumpGame
             EntryPoint = hit;
 
             bool inZone = zone.Contains(hit);
-            if (Slipped) LastResult = DiveScoring.Fail(EntryKind.Slipped, inZone);
-            else if (hitTower) LastResult = DiveScoring.Fail(EntryKind.HitTower, inZone);
-            else LastResult = DiveScoring.Evaluate(Rotation, pose.Tucked, inZone, hitBuoys, zone.InsideMultiplier);
+            DiveResult result;
+            if (Slipped) result = DiveScoring.Fail(EntryKind.Slipped, inZone);
+            else if (hitTower) result = DiveScoring.Fail(EntryKind.HitTower, inZone);
+            else result = DiveScoring.Evaluate(Rotation, tuck, inZone, hitBuoys, zone.InsideMultiplier);
+            result.usedTuck = UsedTuck;
+            LastResult = result;
 
             Current = State.Underwater;
             pose.Underwater = true;
