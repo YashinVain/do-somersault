@@ -64,6 +64,9 @@ namespace JumpGame
         // +1 films from the -X side of the pool, -1 from the +X side.
         public void SetSide(float sign) => viewDirection.x = Mathf.Abs(viewDirection.x) * Mathf.Sign(sign);
 
+        // How far the view leans along Z; 0 restores the default, a negative value films from in front.
+        public void SetLean(float z) => viewDirection.z = Mathf.Approximately(z, 0f) ? 1.5f : z;
+
         void Start() => Snap();
 
         void LateUpdate() => Step(Time.deltaTime);

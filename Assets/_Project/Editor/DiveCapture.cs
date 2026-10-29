@@ -31,6 +31,7 @@ namespace JumpGame.EditorTools
         static DiveHud hud;
         static MapScreen map;
         static Splash splash;
+        static ShopScreen shop;
         static TurnPopups popups;
         static DiveOutcome? lastOutcome;
 
@@ -128,6 +129,7 @@ namespace JumpGame.EditorTools
             hud = UnityEngine.Object.FindAnyObjectByType<DiveHud>();
             map = UnityEngine.Object.FindAnyObjectByType<MapScreen>();
             splash = UnityEngine.Object.FindAnyObjectByType<Splash>();
+            shop = UnityEngine.Object.FindAnyObjectByType<ShopScreen>();
             popups = UnityEngine.Object.FindAnyObjectByType<TurnPopups>();
             cam = follow.GetComponent<Camera>();
 
@@ -148,12 +150,42 @@ namespace JumpGame.EditorTools
             flow.Load(0);
             map.Preview(0);
             CaptureUi("Logs/capture_title.png", null, keepState: true);
+
+            // Every character in the shop, in one contact sheet.
+            int skins = Skins.All.Length;
+            var skinSheet = new Texture2D(FrameW * 5, FrameH * ((skins + 4) / 5), TextureFormat.RGB24, false);
+            int skinRows = (skins + 4) / 5;
+            cam.aspect = FrameW / (float)FrameH;
+            for (int i = 0; i < skins; i++)
+            {
+                shop.Preview(i);
+                Canvas.ForceUpdateCanvases();
+                // A close three-quarter view from the front, with the sky behind.
+                Vector3 chest = diver.transform.position + Vector3.up * 0.15f;
+                Vector3 front = diver.transform.forward * 2.3f + diver.transform.right * 0.8f;
+                cam.transform.SetPositionAndRotation(chest + front, Quaternion.LookRotation(-front));
+                Render(FrameW, FrameH, skinSheet, (i % 5) * FrameW, (skinRows - 1 - i / 5) * FrameH);
+            }
+            File.WriteAllBytes("Logs/capture_skins.png", skinSheet.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(skinSheet);
+            map.Preview(0);
+            shop.Preview(2);
+            CaptureUi("Logs/capture_shop.png", null, keepState: true);
+            shop.Hide();
+            flow.ApplySkin();
+            map.Preview(0);
             for (int loc = 0; loc < flow.LocationCount; loc++)
             {
                 flow.Load(flow.LevelsIn(loc)[1]);
                 map.Preview(1);
                 CaptureUi($"Logs/capture_map_{loc}.png", null, keepState: true);
             }
+            // Summary after the last dive of a location.
+            var lakeLevels = flow.LevelsIn(1);
+            flow.Load(lakeLevels[lakeLevels.Count - 1]);
+            map.Preview(1);
+            map.PreviewSummary();
+            CaptureUi("Logs/capture_summary.png", null, keepState: true);
             map.Preview(2);
 
             CaptureLevels();
@@ -326,17 +358,21 @@ namespace JumpGame.EditorTools
 
         static void CaptureLevels()
         {
-            // The view from every jump spot, five per location.
-            int count = flow.Count, rows = Mathf.CeilToInt(count / (float)Columns);
-            var sheet = new Texture2D(FrameW * Columns, FrameH * rows, TextureFormat.RGB24, false);
-            for (int i = 0; i < count; i++)
+            // The view from every jump spot: one sheet per location, five frames each at a size where the diver can be seen.
+            const int w = 640, h = 360;
+            for (int loc = 0; loc < flow.LocationCount; loc++)
             {
-                flow.Load(i);
-                follow.Snap();
-                Render(FrameW, FrameH, sheet, (i % Columns) * FrameW, (rows - 1 - i / Columns) * FrameH);
+                var list = flow.LevelsIn(loc);
+                var sheet = new Texture2D(w * 2, h * 3, TextureFormat.RGB24, false);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    flow.Load(list[i]);
+                    follow.Snap();
+                    Render(w, h, sheet, (i % 2) * w, (2 - i / 2) * h);
+                }
+                File.WriteAllBytes($"Logs/capture_loc_{loc}.png", sheet.EncodeToPNG());
+                UnityEngine.Object.DestroyImmediate(sheet);
             }
-            File.WriteAllBytes("Logs/capture_levels.png", sheet.EncodeToPNG());
-            UnityEngine.Object.DestroyImmediate(sheet);
         }
 
         static void RunScenario(Scenario s)

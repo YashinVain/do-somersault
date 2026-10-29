@@ -30,6 +30,8 @@ namespace JumpGame
         [SerializeField] RectTransform[] judgeCards;
         [SerializeField] Text[] judgeTexts;
         [SerializeField] Text resultTask;
+        [SerializeField] Text resultCoins;
+        [SerializeField] Text coinCounter;
         [SerializeField] Button retryButton, nextLevelButton;
         [SerializeField] float resultDelay = 0.9f;
 
@@ -55,6 +57,7 @@ namespace JumpGame
         {
             flow.Finished += OnFinished;
             flow.LevelChanged += RefreshLevel;
+            flow.CoinsChanged += RefreshCoins;
             diver.Restarted += OnRestarted;
         }
 
@@ -62,6 +65,7 @@ namespace JumpGame
         {
             flow.Finished -= OnFinished;
             flow.LevelChanged -= RefreshLevel;
+            flow.CoinsChanged -= RefreshCoins;
             diver.Restarted -= OnRestarted;
         }
 
@@ -70,7 +74,7 @@ namespace JumpGame
             prevButton.onClick.AddListener(flow.Back);
             nextButton.onClick.AddListener(flow.Next);
             retryButton.onClick.AddListener(flow.Retry);
-            nextLevelButton.onClick.AddListener(flow.Next);
+            nextLevelButton.onClick.AddListener(OnNextPressed);
             resultPanel.gameObject.SetActive(false);
             RefreshLevel();
         }
@@ -97,6 +101,19 @@ namespace JumpGame
             taskDot.color = taskDone ? TaskDone : TaskOpen;
             best.text = saved.best[flow.Index] > 0 ? "Лучший: " + saved.best[flow.Index] : "";
             RefreshArrows();
+            RefreshCoins();
+        }
+
+        void RefreshCoins()
+        {
+            if (coinCounter != null && flow.Saved != null) coinCounter.text = flow.Coins.ToString();
+        }
+
+        // "Дальше" goes to the next dive; after the last one of a location it opens the summary instead.
+        void OnNextPressed()
+        {
+            if (flow.CanGoNext) flow.Next();
+            else flow.RequestSummary();
         }
 
         void RefreshArrows()
@@ -210,7 +227,12 @@ namespace JumpGame
             else resultTask.text = "Задание: " + flow.Level.TaskText;
             resultTask.color = outcome.taskDone ? TaskDone : new Color(1f, 1f, 1f, 0.75f);
 
-            nextLevelButton.gameObject.SetActive(flow.CanGoNext);
+            resultCoins.text = outcome.coins > 0 ? "+" + outcome.coins + " монет" : "";
+
+            bool summary = !flow.CanGoNext && flow.AtLocationEnd && flow.Saved.stars[flow.Index] > 0;
+            nextLevelButton.gameObject.SetActive(flow.CanGoNext || summary);
+            var label = nextLevelButton.GetComponentInChildren<Text>();
+            if (label != null) label.text = summary ? "Итоги" : "Дальше";
         }
 
         // Cards go up one after another, each with a small overshoot.

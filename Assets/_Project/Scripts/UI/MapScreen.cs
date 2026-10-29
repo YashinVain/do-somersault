@@ -33,6 +33,17 @@ namespace JumpGame
         [SerializeField] Text[] cardGoals;
         [SerializeField] Button jumpButton;
         [SerializeField] Text lockedText;
+        [SerializeField] Button buyButton;
+        [SerializeField] Text buyLabel;
+        [SerializeField] Button backButton;
+        [SerializeField] Text mapCoins;
+
+        [Header("Location summary")]
+        [SerializeField] UiPanel summaryPanel;
+        [SerializeField] Text summaryTitle, summaryTotals, summaryCoins, summaryNextLabel;
+        [SerializeField] Text[] summaryRowLabels, summaryRowScores;
+        [SerializeField] Image[] summaryRowDots;
+        [SerializeField] Button summaryNext, summaryStay;
 
         [Header("3D")]
         [SerializeField] MapMarker markerTemplate;
@@ -65,6 +76,13 @@ namespace JumpGame
             playButton.onClick.AddListener(ShowMap);
             jumpButton.onClick.AddListener(Play);
             menuButton.onClick.AddListener(ShowMap);
+            buyButton.onClick.AddListener(BuyHere);
+            backButton.onClick.AddListener(BackToTitle);
+            summaryNext.onClick.AddListener(GoToNextLocation);
+            summaryStay.onClick.AddListener(() => summaryPanel.Show(false));
+            flow.SummaryRequested += ShowSummary;
+            flow.CoinsChanged += RefreshCoins;
+            summaryPanel.Show(false, true);
             markerTemplate.gameObject.SetActive(false);
             if (flow.Saved == null) flow.Begin();
             ShowTitle();
@@ -89,12 +107,7 @@ namespace JumpGame
             ShowMarkers(false);
             SnapCamera();
 
-            if (titleMedals != null)
-            {
-                int medals = 0;
-                foreach (int s in flow.Saved.stars) medals += s;
-                titleMedals.text = $"Медали: {medals} из {flow.Count * 3}";
-            }
+            RefreshCoins();
         }
 
         public void ShowMap()
@@ -147,6 +160,96 @@ namespace JumpGame
             diveCam.enabled = true;
             diveCam.BlendFromCurrent();
             diver.AcceptInput = true;
+        }
+
+        void BackToTitle()
+        {
+            if (curtain != null) curtain.Dip(ShowTitle);
+            else ShowTitle();
+        }
+
+        void BuyHere()
+        {
+            if (flow.BuyLocation(viewing))
+            {
+                flow.Load(flow.LastOpenIn(viewing));
+                BuildMarkers();
+                Refresh();
+                mapPanel.Replay();
+            }
+        }
+
+        void RefreshCoins()
+        {
+            if (mapCoins != null) mapCoins.text = flow.Coins.ToString();
+            if (titleMedals != null && mode == Mode.Title) titleMedals.text = TitleStats();
+        }
+
+        string TitleStats()
+        {
+            int medals = 0;
+            foreach (int s in flow.Saved.stars) medals += s;
+            return $"Медали {medals} из {flow.Count * 3}     Монеты {flow.Coins}";
+        }
+
+        // ---- End of a location: totals, then a flight to the next one.
+
+        void ShowSummary()
+        {
+            int location = flow.Level.location;
+            var (medals, medalsMax, score, done, count) = flow.StatsOf(location);
+            var list = flow.LevelsIn(location);
+            var saved = flow.Saved;
+
+            summaryTitle.text = $"{flow.LocationName(location)}: итоги";
+            for (int i = 0; i < summaryRowLabels.Length; i++)
+            {
+                bool used = i < list.Count;
+                summaryRowLabels[i].gameObject.SetActive(used);
+                summaryRowScores[i].gameObject.SetActive(used);
+                for (int d = 0; d < 3; d++) summaryRowDots[i * 3 + d].gameObject.SetActive(used);
+                if (!used) continue;
+
+                int level = list[i];
+                string h = flow.HeightOf(level).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+                summaryRowLabels[i].text = $"{i + 1}   ·   {h} м";
+                summaryRowScores[i].text = saved.best[level] > 0 ? saved.best[level].ToString() : "—";
+                for (int d = 0; d < 3; d++)
+                {
+                    var c = DiveHud.MedalColors[d];
+                    c.a = d < saved.stars[level] ? 1f : 0.22f;
+                    summaryRowDots[i * 3 + d].color = c;
+                }
+            }
+
+            summaryTotals.text = $"Медали {medals} из {medalsMax}      Очки {score}";
+            summaryCoins.text = $"Монет сейчас: {flow.Coins}";
+
+            int next = flow.NextLocation;
+            if (next < 0) summaryNextLabel.text = "К карте";
+            else summaryNextLabel.text = flow.IsPaid(next) && !flow.Owns(next) ? "Дальше" : "Следующая локация";
+            summaryPanel.Show(true);
+        }
+
+        // Dip the curtain over the swap to the map, then let the camera fly from this location to the next.
+        void GoToNextLocation()
+        {
+            int from = flow.Level.location, next = flow.NextLocation;
+            summaryPanel.Show(false);
+            void Swap()
+            {
+                resume = -1;
+                Enter(true);
+                mode = Mode.Map;
+                titlePanel.Show(false, true);
+                mapPanel.Show(true);
+                arrows.gameObject.SetActive(true);
+                viewing = from;
+                SnapCamera();
+                View(next >= 0 ? next : from, false);
+            }
+            if (curtain != null) curtain.Dip(Swap);
+            else Swap();
         }
 
         void View(int location, bool keepLevel)
@@ -242,10 +345,25 @@ namespace JumpGame
             foreach (int l in levels) medals += saved.stars[l];
             locationInfo.text = $"Медали: {medals} из {levels.Count * 3}";
 
-            bool locationOpen = flow.IsOpen(levels[0]);
+            bool locationOpen = flow.LocationOpen(viewing);
+            bool buyable = flow.IsPaid(viewing) && !flow.Owns(viewing);
             lockedText.gameObject.SetActive(!locationOpen);
+            buyButton.gameObject.SetActive(buyable);
             if (!locationOpen)
-                lockedText.text = $"Откроется после локации «{flow.LocationName(viewing - 1)}»";
+            {
+                if (buyable)
+                {
+                    int price = flow.PriceOf(viewing);
+                    lockedText.text = "Платная локация";
+                    buyLabel.text = flow.Coins >= price ? $"Купить за {price}" : $"Нужно {price} монет";
+                    buyButton.interactable = flow.Coins >= price;
+                }
+                else
+                {
+                    lockedText.text = $"Откроется после локации «{flow.LocationName(viewing - 1)}»";
+                }
+            }
+            RefreshCoins();
 
             card.SetActive(locationOpen);
             if (locationOpen) RefreshCard();
@@ -376,6 +494,8 @@ namespace JumpGame
                 }
             }
         }
+
+        public void PreviewSummary() => ShowSummary();
 
         // For the editor capture tool: 0 = title, 1 = map, anything else = back in the game.
         public void Preview(int screen)

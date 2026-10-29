@@ -6,29 +6,37 @@ namespace JumpGame
     [Serializable]
     public class ProgressData
     {
-        public int unlocked = 1;
         public int last;
         public int[] best = new int[0];
         public int[] stars = new int[0];
         public bool[] tasks = new bool[0];
 
-        public void Fit(int count)
+        public int coins;
+        public int skin;
+        public bool[] ownedSkins = new bool[0];
+        public bool[] ownedLocations = new bool[0];
+
+        public void Fit(int levels, int skins, int locations)
         {
-            if (best.Length < count) Array.Resize(ref best, count);
-            if (stars.Length < count) Array.Resize(ref stars, count);
-            if (tasks.Length < count) Array.Resize(ref tasks, count);
-            unlocked = Mathf.Clamp(unlocked, 1, count);
-            last = Mathf.Clamp(last, 0, count - 1);
+            if (best.Length < levels) Array.Resize(ref best, levels);
+            if (stars.Length < levels) Array.Resize(ref stars, levels);
+            if (tasks.Length < levels) Array.Resize(ref tasks, levels);
+            if (ownedSkins.Length < skins) Array.Resize(ref ownedSkins, skins);
+            if (ownedLocations.Length < locations) Array.Resize(ref ownedLocations, locations);
+            last = Mathf.Clamp(last, 0, levels - 1);
+            skin = Mathf.Clamp(skin, 0, skins - 1);
+            ownedSkins[0] = true;
+            coins = Mathf.Max(0, coins);
         }
     }
 
     // Local storage for now. The Yandex cloud save will sit behind the same two calls.
     public static class Progress
     {
-        // v2: levels grouped into locations; the old flat list doesn't map onto it.
-        const string Key = "jg_progress_v2";
+        // v3: coins, characters and bought locations; levels open by medals instead of a counter.
+        const string Key = "jg_progress_v3";
 
-        public static ProgressData Load(int levelCount)
+        public static ProgressData Load(int levels, int skins, int locations)
         {
             ProgressData data = null;
             try
@@ -42,7 +50,7 @@ namespace JumpGame
             }
 
             data ??= new ProgressData();
-            data.Fit(levelCount);
+            data.Fit(levels, skins, locations);
             return data;
         }
 

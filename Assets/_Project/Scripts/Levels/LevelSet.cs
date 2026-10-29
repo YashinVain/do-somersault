@@ -77,7 +77,11 @@ namespace JumpGame
     public class LevelSet : ScriptableObject
     {
         public string[] locations;
+        [Tooltip("Coins to unlock each location, 0 for the ones that open by playing. Same order as locations.")]
+        public int[] locationPrices;
         public LevelInfo[] levels;
+
+        public int PriceOf(int location) => locationPrices != null && location < locationPrices.Length ? locationPrices[location] : 0;
 
         // Position of a level inside its location, counting from 1, and how many the location has.
         public (int number, int count) PlaceInLocation(int index)

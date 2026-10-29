@@ -497,10 +497,19 @@ namespace JumpGame.EditorTools
             Object.DestroyImmediate(playLabel.GetComponent<Outline>());
             Object.DestroyImmediate(playLabel.GetComponent<Shadow>());
 
-            var medals = Plain("Medals", new Vector2(100f, -196f), new Vector2(500f, 34f), 22, "", "#8E9CAB", FontStyle.Normal);
+            titleShop = ui.Btn("Shop", panelRt, left, new Vector2(396f, -128f), new Vector2(220f, 76f), "Магазин", "#34495E", 30);
+            var shopRt = (RectTransform)titleShop.transform;
+            shopRt.pivot = new Vector2(0f, 0.5f);
+            shopRt.anchoredPosition = new Vector2(396f, -128f);
+            Object.DestroyImmediate(titleShop.GetComponent<Shadow>());
+            var shopLabel = titleShop.GetComponentInChildren<Text>();
+            Object.DestroyImmediate(shopLabel.GetComponent<Outline>());
+            Object.DestroyImmediate(shopLabel.GetComponent<Shadow>());
+
+            var medals = Plain("Medals", new Vector2(100f, -196f), new Vector2(620f, 34f), 22, "", "#8E9CAB", FontStyle.Normal);
 
             var panel = panelRt.gameObject.AddComponent<UiPanel>();
-            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, medals.rectTransform });
+            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, shopRt, medals.rectTransform });
             return (panel, play, medals);
         }
 
@@ -622,6 +631,9 @@ namespace JumpGame.EditorTools
             Set(mapUi, "slide", new Vector2(0f, -34f));
             mapPanel.gameObject.SetActive(false);
 
+            var extras = BuildMapExtras(ui, mapPanel);
+            var shop = BuildShop(ui, flow, titlePanel);
+
             var hudUi = ui.hud.AddComponent<UiPanel>();
             LinkArray(hudUi, "staggered", new Object[0]);
             Set(hudUi, "fade", 0.35f);
@@ -654,6 +666,20 @@ namespace JumpGame.EditorTools
             LinkArray(map, "cardGoals", goals);
             Link(map, "jumpButton", jump);
             Link(map, "lockedText", locked);
+            Link(map, "buyButton", extras.buy);
+            Link(map, "buyLabel", extras.buyLabel);
+            Link(map, "backButton", extras.back);
+            Link(map, "mapCoins", extras.mapCoins);
+            Link(map, "summaryPanel", extras.summary);
+            Link(map, "summaryTitle", extras.summaryTitle);
+            Link(map, "summaryTotals", extras.summaryTotals);
+            Link(map, "summaryCoins", extras.summaryCoins);
+            Link(map, "summaryNextLabel", extras.summaryNextLabel);
+            LinkArray(map, "summaryRowLabels", extras.rowLabels);
+            LinkArray(map, "summaryRowScores", extras.rowScores);
+            LinkArray(map, "summaryRowDots", extras.rowDots);
+            Link(map, "summaryNext", extras.summaryNext);
+            Link(map, "summaryStay", extras.summaryStay);
             Link(map, "markerTemplate", mm);
             Link(map, "arrows", arrowsRoot);
             Link(map, "arrowLeft", arrowL);

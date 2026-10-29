@@ -26,7 +26,7 @@ namespace JumpGame.EditorTools
         // Each location sits on its own block; they stand side by side along X.
         const float PoolBlockHalf = 32f, PoolBlockZ = 6f, PoolBlockTop = -3.1f;
         // Placed towards -X: the map camera faces back at the towers, so -X is on the right of the screen and "next" comes in from the right.
-        static readonly Vector3[] SiteOffsets = { Vector3.zero, new(-230f, 0f, 0f), new(-460f, 0f, 0f) };
+        static readonly Vector3[] SiteOffsets = { Vector3.zero, new(-230f, 0f, 0f), new(-460f, 0f, 0f), new(-690f, 0f, 0f), new(-920f, 0f, 0f), new(-1150f, 0f, 0f), new(-1380f, 0f, 0f), new(-1610f, 0f, 0f) };
 
         // Platform heights, sideways position and how far the front edge reaches over the water.
         static readonly (float height, float x, float edgeZ)[] Platforms =
@@ -54,6 +54,11 @@ namespace JumpGame.EditorTools
             var pool = BuildPoolSite();
             var lake = BuildLakeSite();
             var cliffs = BuildCliffSite();
+            var port = BuildPortSite();
+            var arctic = BuildArcticSite();
+            var town = BuildTownSite();
+            var jungle = BuildJungleSite();
+            var rig = BuildRigSite();
 
             var zone = BuildZone();
             var splash = BuildSplash();
@@ -68,7 +73,7 @@ namespace JumpGame.EditorTools
 
             var flow = new GameObject("Game").AddComponent<GameFlow>();
             Link(flow, "levels", LevelAsset());
-            LinkArray(flow, "sites", new Object[] { pool, lake, cliffs });
+            LinkArray(flow, "sites", new Object[] { pool, lake, cliffs, port, arctic, town, jungle, rig });
             Link(flow, "sun", sun);
             Link(flow, "diver", diver);
             Link(flow, "zone", zone);
@@ -256,7 +261,7 @@ namespace JumpGame.EditorTools
             return MakeTower(root, spots, solids);
         }
 
-        static DivingTower MakeTower(Transform root, Transform[] edges, System.Collections.Generic.List<Bounds> solids, float[] sides = null)
+        static DivingTower MakeTower(Transform root, Transform[] edges, System.Collections.Generic.List<Bounds> solids, float[] sides = null, float[] leans = null)
         {
             var tower = root.gameObject.AddComponent<DivingTower>();
             var so = new SerializedObject(tower);
@@ -265,6 +270,12 @@ namespace JumpGame.EditorTools
                 var sp = so.FindProperty("cameraSides");
                 sp.arraySize = sides.Length;
                 for (int i = 0; i < sides.Length; i++) sp.GetArrayElementAtIndex(i).floatValue = sides[i];
+            }
+            if (leans != null)
+            {
+                var lp = so.FindProperty("cameraLean");
+                lp.arraySize = leans.Length;
+                for (int i = 0; i < leans.Length; i++) lp.GetArrayElementAtIndex(i).floatValue = leans[i];
             }
             var arr = so.FindProperty("edges");
             arr.arraySize = edges.Length;
@@ -307,7 +318,13 @@ namespace JumpGame.EditorTools
                 task = task, taskTurns = turns
             };
 
-            set.locations = new[] { "Городской бассейн", "Лесное озеро", "Скалы у моря" };
+            set.locations = new[]
+            {
+                "Городской бассейн", "Лесное озеро", "Скалы у моря", "Ночной порт",
+                "Северная бухта", "Старый город", "Джунгли и водопад", "Нефтяная платформа"
+            };
+            // The last two are bought with coins.
+            set.locationPrices = new[] { 0, 0, 0, 0, 0, 0, 1500, 2500 };
 
             // Five dives per location, each from its own spot and each higher than the last.
             // Pool: starting block 0.8 / 3 / 5 / 7.5 / 10 m. Lake: jetty 0.8 / tower arm 5 / tree 7 / tower top 9 / bridge 12 m.
@@ -331,7 +348,42 @@ namespace JumpGame.EditorTools
                 L(2, 1, 5.0f, 1.1f, 0f, TaskKind.CannonballInZone),
                 L(2, 2, 5.6f, 1.0f, 1.0f, TaskKind.CleanTurns, 2.5f),
                 L(2, 3, 6.0f, 1.0f, 0f, TaskKind.Turns, 3f),
-                L(2, 4, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye)
+                L(2, 4, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye),
+
+                // Night port: quay 1.2 / tug 4.8 / containers 9 / crane catwalk 15 / crane boom 23.
+                L(3, 0, 2.6f, 1.1f, 0f, TaskKind.HeadFirst),
+                L(3, 1, 5.4f, 1.2f, 0f, TaskKind.Turns, 1f),
+                L(3, 2, 5.6f, 1.1f, 0f, TaskKind.CannonballInZone),
+                L(3, 3, 6.8f, 1.0f, 1.0f, TaskKind.CleanTurns, 2f),
+                L(3, 4, 8.6f, 0.95f, 0f, TaskKind.Bullseye),
+
+                // Northern bay: floe 0.6 / icebreaker 3.4 / iceberg 8 / glacier ledge 14 / ice arch 20.
+                L(4, 0, 2.4f, 1.1f, 0f, TaskKind.FeetFirst),
+                L(4, 1, 4.8f, 1.1f, 0.8f, TaskKind.ZoneNoBuoys),
+                L(4, 2, 5.4f, 1.0f, 0f, TaskKind.NoTuck),
+                L(4, 3, 6.4f, 1.0f, 1.1f, TaskKind.CleanTurns, 2f),
+                L(4, 4, 7.8f, 0.95f, 0f, TaskKind.Turns, 3f),
+
+                // Old town: steps 0.9 / bridge 5 / balcony 9 / bell tower 15 / dome 22.
+                L(5, 0, 2.4f, 1.0f, 0f, TaskKind.HeadFirst),
+                L(5, 1, 4.4f, 1.1f, 0f, TaskKind.Turns, 1.5f),
+                L(5, 2, 5.4f, 1.0f, 0.9f, TaskKind.CannonballInZone),
+                L(5, 3, 6.6f, 1.0f, 0f, TaskKind.CleanTurns, 2.5f),
+                L(5, 4, 8.2f, 0.95f, 1.2f, TaskKind.Bullseye),
+
+                // Jungle falls (paid): dock 1.2 / rock ledge 6 / treehouse 11 / temple 16 / lip of the falls 24.
+                L(6, 0, 2.8f, 1.1f, 0f, TaskKind.Turns, 1f),
+                L(6, 1, 5.0f, 1.1f, 0f, TaskKind.FeetFirst),
+                L(6, 2, 6.4f, 1.0f, 0.8f, TaskKind.Turns, 2f),
+                L(6, 3, 7.2f, 1.0f, 0f, TaskKind.CannonballInZone),
+                L(6, 4, 8.8f, 0.95f, 1.2f, TaskKind.Bullseye),
+
+                // Offshore rig (paid): landing 2.5 / walkway 8 / deck 13 / helideck 19 / crane boom 27.
+                L(7, 0, 3.2f, 1.1f, 0f, TaskKind.HeadFirst),
+                L(7, 1, 5.0f, 1.1f, 0f, TaskKind.CleanTurns, 1.5f),
+                L(7, 2, 6.4f, 1.0f, 0.8f, TaskKind.Turns, 2.5f),
+                L(7, 3, 8.0f, 1.0f, 0f, TaskKind.Turns, 3f),
+                L(7, 4, 9.8f, 0.9f, 1.0f, TaskKind.Bullseye)
             };
 
             // Keep tuned thresholds for levels whose layout did not change.
@@ -591,11 +643,31 @@ namespace JumpGame.EditorTools
 
         static Diver BuildDiver()
         {
+            // The materials only set the first look; DiverSkin tints private copies of them per character.
             var skin = Mat("Skin", "#EFBC98", smoothness: 0.3f);
             var trunks = Mat("Trunks", "#283B8F", smoothness: 0.3f);
             var cap = Mat("SwimCap", "#FFC743", smoothness: 0.55f);
             var strap = Mat("Goggles", "#1E2A4A", smoothness: 0.6f);
             var lens = Mat("Lens", "#7FD3F0", smoothness: 0.9f);
+            var shirtMat = Mat("Shirt", "#F4F1EA", smoothness: 0.25f);
+            var hairMat = Mat("Hair", "#3A2A20", smoothness: 0.2f);
+            var accentMat = Mat("Accent", "#C8553D", smoothness: 0.4f);
+            var metalMat = Mat("Metal", "#BFC6CE", smoothness: 0.8f);
+
+            var tinted = new System.Collections.Generic.List<(Renderer, SkinRole)>();
+            var worn = new System.Collections.Generic.List<(GameObject, Gear)>();
+            var widen = new System.Collections.Generic.List<Transform>();
+            var lensParts = new System.Collections.Generic.List<Transform>();
+            Transform Tint(Transform t, SkinRole role)
+            {
+                tinted.Add((t.GetComponent<Renderer>(), role));
+                return t;
+            }
+            Transform Wear(Transform t, Gear g)
+            {
+                worn.Add((t.gameObject, g));
+                return t;
+            }
 
             // Smooth rounded body: every joint is covered by the rounded ends of the parts meeting there.
             var torsoMesh = LowPolyMeshes.Lathe("Body_Torso", new[]
@@ -611,6 +683,7 @@ namespace JumpGame.EditorTools
             }, 16, true);
             var head = LowPolyMeshes.Sphere("Body_Head", 0.142f);
             var capMesh = LowPolyMeshes.Sphere("Body_Cap", 0.151f, 16, 8, 0f, 100f);
+            var hairMesh = LowPolyMeshes.Sphere("Body_Hair", 0.156f, 16, 8, 0f, 118f);
             var band = LowPolyMeshes.Lathe("Body_GoggleBand", new[] { new Vector2(0.144f, 0.02f), new Vector2(0.149f, 0f), new Vector2(0.144f, -0.02f) }, 16, true);
             var joint = LowPolyMeshes.Sphere("Body_Joint", 0.068f, 12, 8);
             var lensMesh = LowPolyMeshes.Sphere("Body_Lens", 0.038f, 10, 6);
@@ -621,6 +694,8 @@ namespace JumpGame.EditorTools
             var thighMesh = LowPolyMeshes.Capsule("Body_Thigh", 0.102f, 0.072f, 0.37f);
             var shinMesh = LowPolyMeshes.Capsule("Body_Shin", 0.073f, 0.05f, 0.36f);
             var footMesh = LowPolyMeshes.Capsule("Body_Foot", 0.05f, 0.042f, 0.17f);
+            var tankMesh = LowPolyMeshes.Capsule("Body_Tank", 0.07f, 0.07f, 0.34f);
+            var ringMesh = LowPolyMeshes.Torus("Body_Ring", 0.31f, 0.075f, 20, 8);
 
             var root = new GameObject("Diver");
             // Placed on the 5 m platform; GameFlow moves it to the current level's platform.
@@ -628,43 +703,81 @@ namespace JumpGame.EditorTools
 
             var rig = new GameObject("Rig").transform;
             rig.SetParent(root.transform, false);
-            Put(trunksMesh, "Trunks", rig, Vector3.zero, new Vector3(1f, 1f, 0.72f), trunks);
+            widen.Add(Tint(Put(trunksMesh, "Trunks", rig, Vector3.zero, new Vector3(1f, 1f, 0.72f), trunks), SkinRole.Outfit));
+            var ring = Put(ringMesh, "SwimRing", rig, new Vector3(0f, 0.03f, 0f), new Vector3(1f, 1f, 0.85f), accentMat);
+            ring.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Wear(Tint(ring, SkinRole.Accent), Gear.SwimRing);
 
             var spine = Pivot("Spine", rig, new Vector3(0f, 0.1f, 0f));
-            Put(torsoMesh, "Torso", spine, Vector3.zero, new Vector3(1f, 1f, 0.66f), skin);
-            Put(neck, "Neck", spine, new Vector3(0f, 0.52f, 0f), Vector3.one, skin);
+            widen.Add(Tint(Put(torsoMesh, "Torso", spine, Vector3.zero, new Vector3(1f, 1f, 0.66f), skin), SkinRole.Skin));
+            widen.Add(Wear(Tint(Put(torsoMesh, "Shirt", spine, Vector3.zero, new Vector3(1.05f, 1.0f, 0.7f), shirtMat), SkinRole.Shirt), Gear.Shirt));
+            Tint(Put(neck, "Neck", spine, new Vector3(0f, 0.52f, 0f), Vector3.one, skin), SkinRole.Face);
+            Wear(Tint(Put(cube, "Backpack", spine, new Vector3(0f, 0.2f, -0.2f), new Vector3(0.3f, 0.34f, 0.13f), accentMat), SkinRole.Accent), Gear.Backpack);
+            foreach (float x in new[] { -0.085f, 0.085f })
+                Wear(Tint(Put(tankMesh, "Tank", spine, new Vector3(x, 0.18f, -0.2f), Vector3.one, accentMat), SkinRole.Accent), Gear.Tank);
 
             var headPivot = Pivot("Head", spine, new Vector3(0f, 0.63f, 0.01f));
-            Put(head, "Head_Mesh", headPivot, Vector3.zero, new Vector3(0.95f, 1.06f, 1f), skin);
+            Tint(Put(head, "Head_Mesh", headPivot, Vector3.zero, new Vector3(0.95f, 1.06f, 1f), skin), SkinRole.Face);
             var capT = Put(capMesh, "Cap", headPivot, new Vector3(0f, 0.012f, -0.006f), new Vector3(1f, 1.04f, 1.02f), cap);
             capT.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+            Wear(Tint(capT, SkinRole.Cap), Gear.SwimCap);
             var bandT = Put(band, "GoggleStrap", headPivot, new Vector3(0f, -0.004f, 0f), new Vector3(0.98f, 1f, 1.02f), strap);
             bandT.localRotation = Quaternion.Euler(-10f, 0f, 0f);
+            Wear(Tint(bandT, SkinRole.Strap), Gear.Goggles | Gear.Mask);
             foreach (float x in new[] { -0.05f, 0.05f })
-                Put(lensMesh, "Lens", headPivot, new Vector3(x, 0.004f, 0.134f), new Vector3(1.15f, 0.8f, 0.5f), lens);
+            {
+                var l = Put(lensMesh, "Lens", headPivot, new Vector3(x, 0.004f, 0.134f), new Vector3(1.15f, 0.8f, 0.5f), lens);
+                Wear(Tint(l, SkinRole.Lens), Gear.Goggles | Gear.Eyes);
+                lensParts.Add(l);
+            }
+
+            // Hair, beard and hats.
+            var hairT = Put(hairMesh, "Hair", headPivot, new Vector3(0f, 0.004f, -0.01f), new Vector3(0.97f, 1.05f, 1.02f), hairMat);
+            hairT.localRotation = Quaternion.Euler(-34f, 0f, 0f);
+            Wear(Tint(hairT, SkinRole.Hair), Gear.Hair);
+            Wear(Tint(Put(joint, "Beard", headPivot, new Vector3(0f, -0.1f, 0.065f), new Vector3(1.75f, 1.2f, 1.35f), hairMat), SkinRole.Hair), Gear.Beard);
+            var tail = Put(upperArm, "Ponytail", headPivot, new Vector3(0f, -0.05f, -0.16f), new Vector3(0.65f, 0.85f, 0.65f), hairMat);
+            tail.localRotation = Quaternion.Euler(25f, 0f, 0f);
+            Wear(Tint(tail, SkinRole.Hair), Gear.Ponytail);
+
+            Wear(Tint(Put(hex, "HatBrim", headPivot, new Vector3(0f, 0.115f, 0f), new Vector3(0.5f, 0.022f, 0.5f), accentMat), SkinRole.Accent), Gear.PirateHat);
+            Wear(Tint(Put(cone, "HatCrown", headPivot, new Vector3(0f, 0.2f, 0f), new Vector3(0.32f, 0.2f, 0.32f), accentMat), SkinRole.Accent), Gear.PirateHat);
+            Wear(Tint(Put(joint, "Eyepatch", headPivot, new Vector3(0.05f, 0.016f, 0.128f), new Vector3(0.95f, 0.75f, 0.3f), strap), SkinRole.Strap), Gear.Eyepatch);
+            var patchBand = Put(band, "EyepatchBand", headPivot, new Vector3(0f, 0.004f, 0f), new Vector3(0.98f, 0.6f, 1.02f), strap);
+            patchBand.localRotation = Quaternion.Euler(-18f, 0f, 22f);
+            Wear(Tint(patchBand, SkinRole.Strap), Gear.Eyepatch);
+            Wear(Tint(Put(cube, "Sunglasses", headPivot, new Vector3(0f, 0.012f, 0.14f), new Vector3(0.17f, 0.045f, 0.03f), strap), SkinRole.Strap), Gear.Sunglasses);
+            Wear(Tint(Put(cube, "MaskFrame", headPivot, new Vector3(0f, 0.008f, 0.136f), new Vector3(0.18f, 0.09f, 0.05f), strap), SkinRole.Strap), Gear.Mask);
+            Wear(Tint(Put(cube, "MaskGlass", headPivot, new Vector3(0f, 0.008f, 0.162f), new Vector3(0.145f, 0.06f, 0.012f), lens), SkinRole.Lens), Gear.Mask);
+            Wear(Tint(Put(hex, "AntennaPole", headPivot, new Vector3(0f, 0.2f, 0f), new Vector3(0.016f, 0.12f, 0.016f), metalMat), SkinRole.Metal), Gear.Antenna);
+            Wear(Tint(Put(lensMesh, "AntennaTip", headPivot, new Vector3(0f, 0.27f, 0f), new Vector3(1.3f, 1.3f, 1.3f), accentMat), SkinRole.Accent), Gear.Antenna);
 
             (Transform arm, Transform fore) Arm(string side, float x)
             {
-                Put(joint, "Shoulder_" + side, spine, new Vector3(x * 0.93f, 0.4f, 0f), Vector3.one, skin);
+                Tint(Put(joint, "Shoulder_" + side, spine, new Vector3(x * 0.93f, 0.4f, 0f), Vector3.one, skin), SkinRole.Skin);
                 var arm = Pivot("Arm_" + side, spine, new Vector3(x, 0.4f, 0f));
-                Put(upperArm, "UpperArm_" + side, arm, Vector3.zero, Vector3.one, skin);
+                Tint(Put(upperArm, "UpperArm_" + side, arm, Vector3.zero, Vector3.one, skin), SkinRole.Skin);
                 var fore = Pivot("ForeArm_" + side, arm, new Vector3(0f, -0.27f, 0f));
-                Put(foreArm, "ForeArm_" + side + "_Mesh", fore, Vector3.zero, Vector3.one, skin);
-                Put(hand, "Hand_" + side, fore, new Vector3(0f, -0.29f, 0f), new Vector3(0.9f, 1.3f, 0.6f), skin);
+                Tint(Put(foreArm, "ForeArm_" + side + "_Mesh", fore, Vector3.zero, Vector3.one, skin), SkinRole.Skin);
+                Tint(Put(hand, "Hand_" + side, fore, new Vector3(0f, -0.29f, 0f), new Vector3(0.9f, 1.3f, 0.6f), skin), SkinRole.Skin);
                 return (arm, fore);
             }
             var armL = Arm("L", -0.235f);
             var armR = Arm("R", 0.235f);
 
+            Transform shinRight = null;
             (Transform thigh, Transform shin, Transform ankle) Leg(string side, float x)
             {
                 var thigh = Pivot("Thigh_" + side, rig, new Vector3(x, 0.02f, 0f));
-                Put(thighMesh, "Thigh_" + side + "_Mesh", thigh, Vector3.zero, Vector3.one, skin);
+                Tint(Put(thighMesh, "Thigh_" + side + "_Mesh", thigh, Vector3.zero, Vector3.one, skin), SkinRole.Skin);
                 var shin = Pivot("Shin_" + side, thigh, new Vector3(0f, -0.44f, 0f));
-                Put(shinMesh, "Shin_" + side + "_Mesh", shin, Vector3.zero, Vector3.one, skin);
+                var shinVisual = Put(shinMesh, "Shin_" + side + "_Mesh", shin, Vector3.zero, Vector3.one, skin);
+                Tint(shinVisual, side == "R" ? SkinRole.ShinR : SkinRole.Skin);
+                if (side == "R") shinRight = shinVisual;
                 var ankle = Pivot("Ankle_" + side, shin, new Vector3(0f, -0.425f, 0f));
                 var foot = Put(footMesh, "Foot_" + side, ankle, new Vector3(0f, 0f, -0.05f), Vector3.one, skin);
                 foot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                Tint(foot, side == "R" ? SkinRole.ShinR : SkinRole.Skin);
                 return (thigh, shin, ankle);
             }
             var legL = Leg("L", -0.1f);
@@ -683,6 +796,30 @@ namespace JumpGame.EditorTools
             Link(pose, "kneeR", legR.shin);
             Link(pose, "ankleL", legL.ankle);
             Link(pose, "ankleR", legR.ankle);
+
+            var dress = root.AddComponent<DiverSkin>();
+            var dressSo = new SerializedObject(dress);
+            var tintedProp = dressSo.FindProperty("tinted");
+            tintedProp.arraySize = tinted.Count;
+            for (int i = 0; i < tinted.Count; i++)
+            {
+                var e = tintedProp.GetArrayElementAtIndex(i);
+                e.FindPropertyRelative("renderer").objectReferenceValue = tinted[i].Item1;
+                e.FindPropertyRelative("role").enumValueIndex = (int)tinted[i].Item2;
+            }
+            var gearProp = dressSo.FindProperty("gear");
+            gearProp.arraySize = worn.Count;
+            for (int i = 0; i < worn.Count; i++)
+            {
+                var e = gearProp.GetArrayElementAtIndex(i);
+                e.FindPropertyRelative("part").objectReferenceValue = worn[i].Item1;
+                e.FindPropertyRelative("gear").intValue = (int)worn[i].Item2;
+                worn[i].Item1.SetActive((Skins.All[0].gear & worn[i].Item2) != 0);
+            }
+            dressSo.ApplyModifiedPropertiesWithoutUndo();
+            LinkArray(dress, "widen", widen.ToArray());
+            LinkArray(dress, "lenses", lensParts.ToArray());
+            Link(dress, "shinR", shinRight);
 
             var diver = root.AddComponent<Diver>();
             Link(diver, "pose", pose);
@@ -833,6 +970,9 @@ namespace JumpGame.EditorTools
             var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(440f, 34f), 22, TextAnchor.MiddleLeft);
             var menuButton = Btn("Menu", root, topRight, new Vector2(-24f, -18f), new Vector2(120f, 56f), "Меню", "#2BA39C", 26);
             var best = Label("Best", root, topRight, new Vector2(-28f, -84f), new Vector2(360f, 40f), 26, TextAnchor.MiddleRight);
+            var coinDot = Dot("CoinDot", root, topRight, new Vector2(-158f, -26f), 26f);
+            coinDot.color = new Color(1f, 0.8f, 0.26f);
+            var coinCounter = Label("CoinCounter", root, topRight, new Vector2(-192f, -22f), new Vector2(150f, 34f), 26, TextAnchor.MiddleRight);
 
             var turns = Label("Turns", root, top, new Vector2(0f, -90f), new Vector2(600f, 130f), 96, TextAnchor.UpperCenter);
             var hint = Label("Hint", root, new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1100f, 120f), 32, TextAnchor.LowerCenter);
@@ -879,6 +1019,8 @@ namespace JumpGame.EditorTools
             }
 
             var task = Label("Task", panel, center, new Vector2(0f, -72f), new Vector2(1000f, 40f), 26, TextAnchor.MiddleCenter);
+            var coinsEarned = Label("CoinsEarned", panel, center, new Vector2(-190f, -62f), new Vector2(260f, 34f), 24, TextAnchor.MiddleCenter);
+            coinsEarned.color = new Color(1f, 0.82f, 0.3f);
             var retry = Btn("Retry", panel, center, new Vector2(-130f, -150f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
             var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -150f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);
 
@@ -903,6 +1045,8 @@ namespace JumpGame.EditorTools
             LinkArray(hud, "judgeCards", cards);
             LinkArray(hud, "judgeTexts", cardTexts);
             Link(hud, "resultTask", task);
+            Link(hud, "resultCoins", coinsEarned);
+            Link(hud, "coinCounter", coinCounter);
             Link(hud, "retryButton", retry);
             Link(hud, "nextLevelButton", nextLevel);
 
