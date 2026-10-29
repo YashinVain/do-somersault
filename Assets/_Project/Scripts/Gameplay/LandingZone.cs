@@ -12,6 +12,12 @@ namespace JumpGame
         [SerializeField] Transform[] floats;
         [SerializeField] LineRenderer rope;
 
+        [Header("Rope building")]
+        [SerializeField] Mesh floatMesh;
+        [SerializeField] Material floatRed, floatWhite;
+        [SerializeField] float floatSpacing = 0.186f;
+        [SerializeField] float floatHeight = 0.035f;
+
         [Header("Float physics")]
         [SerializeField] float stiffness = 26f;
         [SerializeField] float damping = 3.2f;
@@ -47,8 +53,45 @@ namespace JumpGame
             return d.sqrMagnitude <= radius * radius;
         }
 
+        // Moves the ring and rebuilds the floats for a new radius.
+        public void Configure(Vector3 center, float newRadius)
+        {
+            transform.position = center;
+            radius = newRadius;
+            waves.Clear();
+
+            if (floats != null)
+                foreach (var f in floats)
+                    if (f != null)
+                    {
+                        if (Application.isPlaying) Destroy(f.gameObject);
+                        else DestroyImmediate(f.gameObject);
+                    }
+
+            int count = Mathf.Max(12, Mathf.RoundToInt(2f * Mathf.PI * radius / floatSpacing));
+            floats = new Transform[count];
+            for (int i = 0; i < count; i++)
+            {
+                float a = i / (float)count * Mathf.PI * 2f;
+                var tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+
+                var go = new GameObject("Float_" + i);
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(Mathf.Cos(a) * radius, floatHeight, Mathf.Sin(a) * radius);
+                go.transform.localRotation = Quaternion.LookRotation(tangent) * Quaternion.Euler(90f, 0f, 0f);
+                go.AddComponent<MeshFilter>().sharedMesh = floatMesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = (i / 2) % 2 == 0 ? floatRed : floatWhite;
+                floats[i] = go.transform;
+            }
+
+            Init();
+            for (int i = 0; i < count; i++)
+                if (rope != null) rope.SetPosition(i, floats[i].position);
+        }
+
         void Init()
         {
+            floats ??= new Transform[0];
             int n = floats.Length;
             rest = new Vector3[n];
             offset = new Vector3[n];

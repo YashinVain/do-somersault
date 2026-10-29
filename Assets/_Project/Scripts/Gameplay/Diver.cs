@@ -28,9 +28,19 @@ namespace JumpGame
         [Header("Flight")]
         [SerializeField] float gravity = 9.81f;
 
+        [Header("Contact with the tower")]
+        [SerializeField] float restitution = 0.2f;
+        [SerializeField] float friction = 0.6f;
+        [Tooltip("Below this speed while touching the tower the dive counts as stuck on the platform.")]
+        [SerializeField] float restSpeed = 0.6f;
+        [SerializeField] float restTime = 0.8f;
+        [Tooltip("Velocity change, m/s, that counts as a real knock rather than the toes brushing the edge.")]
+        [SerializeField] float knockImpulse = 0.8f;
+
         [Header("Links")]
         [SerializeField] DiverPose pose;
         [SerializeField] LandingZone zone;
+        [SerializeField] DivingTower tower;
         [SerializeField] Splash splash;
 
         public State Current { get; private set; }
@@ -40,6 +50,7 @@ namespace JumpGame
         public bool Slipped { get; private set; }
         public float LeanDanger => Current == State.Crouching ? Mathf.Clamp01(lean / fallAngle) : 0f;
         public DiveResult LastResult { get; private set; }
+        public Vector3 EntryPoint { get; private set; }
 
         public event Action<DiveResult> Entered;
         public event Action Restarted;
@@ -55,6 +66,8 @@ namespace JumpGame
         float lean, leanVel;
         float holdTime;
         bool hitBuoys;
+        bool hitTower, stuck;
+        float restTimer;
         bool wasHeld;
         bool initialized;
         readonly Vector3[] contacts = new Vector3[DiverPose.ContactCount];
@@ -169,7 +182,8 @@ namespace JumpGame
             pose.Crouched = 0f;
             pose.Airborne = true;
             pose.Tucked = tuck;
-            hitBuoys = false;
+            hitBuoys = hitTower = stuck = false;
+            restTimer = 0f;
             Current = State.Airborne;
         }
 
@@ -189,10 +203,77 @@ namespace JumpGame
             com += velocity * dt;
             PlaceAroundCom(localCom);
 
+            CollideWithTower(dt, localCom);
             TouchBuoys();
 
-            if (pose.LowestPoint() <= zone.WaterLevel)
+            if (stuck)
+                StopOnTower();
+            else if (pose.LowestPoint() <= zone.WaterLevel)
                 EnterWater();
+        }
+
+        // Body points against the tower boxes: push out, then an impulse with friction that changes both
+        // the flight and the spin, as a knock on the board would.
+        void CollideWithTower(float dt, Vector3 localCom)
+        {
+            if (tower == null) return;
+
+            pose.ContactPoints(contacts);
+            float inertia = pose.Inertia(localCom);
+            float omega = Spin * Mathf.Deg2Rad;
+            bool touching = false;
+
+            foreach (var p in contacts)
+            {
+                if (!tower.Penetration(p, out var n, out float depth)) continue;
+                touching = true;
+                com += n * depth;
+
+                // Velocity of this point: the centre of mass plus the spin around the somersault (x) axis.
+                Vector3 r = p - com;
+                var arm = new Vector3(0f, -r.z, r.y);
+                Vector3 vp = velocity + arm * omega;
+                float vn = Vector3.Dot(vp, n);
+                if (vn >= 0f) continue;
+
+                float an = Vector3.Dot(arm, n);
+                float j = -(1f + restitution) * vn / (1f + an * an / inertia);
+                velocity += n * j;
+                omega += j * an / inertia;
+
+                Vector3 vt = vp - n * vn;
+                float speed = vt.magnitude;
+                if (speed > 0.001f)
+                {
+                    Vector3 t = vt / speed;
+                    float at = Vector3.Dot(arm, t);
+                    float jt = Mathf.Max(-speed / (1f + at * at / inertia), -friction * j);
+                    velocity += t * jt;
+                    omega += jt * at / inertia;
+                }
+
+                if (j > knockImpulse) hitTower = true;
+            }
+
+            if (!touching)
+            {
+                restTimer = 0f;
+                return;
+            }
+
+            angularMomentum = omega * Mathf.Rad2Deg * inertia;
+            PlaceAroundCom(localCom);
+
+            restTimer = velocity.magnitude < restSpeed ? restTimer + dt : 0f;
+            if (restTimer > restTime) stuck = true;
+        }
+
+        void StopOnTower()
+        {
+            LastResult = DiveScoring.Fail(EntryKind.OnTower, false);
+            EntryPoint = com;
+            Current = State.Underwater;
+            Entered?.Invoke(LastResult);
         }
 
         void PlaceAroundCom(Vector3 localCom)
@@ -219,11 +300,12 @@ namespace JumpGame
         {
             Vector3 hit = com;
             hit.y = zone.WaterLevel;
+            EntryPoint = hit;
 
             bool inZone = zone.Contains(hit);
-            LastResult = Slipped
-                ? DiveScoring.Slip(inZone)
-                : DiveScoring.Evaluate(Rotation, pose.Tucked, inZone, hitBuoys, zone.InsideMultiplier);
+            if (Slipped) LastResult = DiveScoring.Fail(EntryKind.Slipped, inZone);
+            else if (hitTower) LastResult = DiveScoring.Fail(EntryKind.HitTower, inZone);
+            else LastResult = DiveScoring.Evaluate(Rotation, pose.Tucked, inZone, hitBuoys, zone.InsideMultiplier);
 
             Current = State.Underwater;
             pose.Underwater = true;
@@ -237,6 +319,8 @@ namespace JumpGame
         void UpdateUnderwater(float dt)
         {
             pose.Step(dt);
+            if (stuck) return;
+
             velocity = Vector3.Lerp(velocity, Vector3.down * 0.5f, 1f - Mathf.Exp(-5f * dt));
             com += velocity * dt;
             angularMomentum = Mathf.MoveTowards(angularMomentum, 0f, Mathf.Abs(angularMomentum) * 4f * dt + 0.01f * dt);
@@ -248,12 +332,20 @@ namespace JumpGame
             TouchBuoys();
         }
 
+        public void SetStart(Vector3 position, Quaternion rotation)
+        {
+            startPosition = position;
+            startRotation = rotation;
+            ResetToStart();
+        }
+
         public void ResetToStart()
         {
             transform.SetPositionAndRotation(startPosition, startRotation);
             velocity = Vector3.zero;
             angularMomentum = Spin = Rotation = tuck = Charge = holdTime = lean = leanVel = 0f;
-            Slipped = hitBuoys = false;
+            Slipped = hitBuoys = hitTower = stuck = false;
+            restTimer = 0f;
             pose.ResetPose();
             wasHeld = true; // ignore the tap that triggered the restart
             Current = State.Ready;

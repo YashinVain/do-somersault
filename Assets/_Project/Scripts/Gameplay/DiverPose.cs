@@ -172,11 +172,16 @@ namespace JumpGame
             into[4] = foreR.TransformPoint(new Vector3(0f, -0.3f, 0f));
             into[5] = kneeL.position;
             into[6] = kneeR.position;
-            into[7] = kneeL.TransformPoint(new Vector3(0f, -0.47f, 0.05f));
-            into[8] = kneeR.TransformPoint(new Vector3(0f, -0.47f, 0.05f));
+            into[7] = kneeL.TransformPoint(new Vector3(0f, -0.47f, 0.15f));
+            into[8] = kneeR.TransformPoint(new Vector3(0f, -0.47f, 0.15f));
+            into[9] = kneeL.TransformPoint(new Vector3(0f, -0.47f, -0.08f));
+            into[10] = kneeR.TransformPoint(new Vector3(0f, -0.47f, -0.08f));
+            into[11] = spine.TransformPoint(new Vector3(0f, 0.79f, 0f));
+            into[12] = foreL.position;
+            into[13] = foreR.position;
         }
 
-        public const int ContactCount = 9;
+        public const int ContactCount = 14;
 
         public void ResetPose()
         {

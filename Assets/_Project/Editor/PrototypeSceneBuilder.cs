@@ -14,13 +14,22 @@ namespace JumpGame.EditorTools
         public const string ScenePath = "Assets/_Project/Scenes/Pool_Prototype.unity";
         const string MaterialDir = "Assets/_Project/Materials/Prototype";
 
-        const float PlatformTop = 5f;
+        const string LevelsPath = "Assets/_Project/Levels/PoolLevels.asset";
+
         const float DeckTop = 0.3f;
         const float PoolDepth = 3f;
         static readonly Vector2 PoolX = new(-5f, 5f);
         static readonly Vector2 PoolZ = new(-3f, 15f);
-        static readonly Vector3 ZoneCenter = new(0f, 0f, 3.9f);
-        const float ZoneRadius = 1.3f;
+        const float TowerBack = -4.8f;
+
+        // Platform heights, sideways position and how far the front edge reaches over the water.
+        static readonly (float height, float x, float edgeZ)[] Platforms =
+        {
+            (3f, -2.6f, -0.9f),
+            (5f, 2.6f, -0.4f),
+            (7.5f, -2.6f, 0f),
+            (10f, 0f, 0.3f)
+        };
 
         // Meshes
         static Mesh cube, hex, disc, rough, cone, drop;
@@ -36,7 +45,7 @@ namespace JumpGame.EditorTools
 
             BuildAtmosphere();
             BuildPool();
-            BuildTower();
+            var tower = BuildTower();
             BuildSurroundings();
 
             var zone = BuildZone();
@@ -44,9 +53,18 @@ namespace JumpGame.EditorTools
             var diver = BuildDiver();
             Link(diver, "zone", zone);
             Link(diver, "splash", splash);
+            Link(diver, "tower", tower);
 
-            BuildCamera(diver, zone);
-            BuildHud(diver);
+            var cam = BuildCamera(diver, zone);
+
+            var flow = new GameObject("Game").AddComponent<GameFlow>();
+            Link(flow, "levels", LevelAsset());
+            Link(flow, "tower", tower);
+            Link(flow, "diver", diver);
+            Link(flow, "zone", zone);
+            Link(flow, "cam", cam);
+
+            BuildHud(diver, flow);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -75,7 +93,8 @@ namespace JumpGame.EditorTools
             sun.color = Hex("#FFF0D8");
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.6f;
-            sun.transform.rotation = Quaternion.Euler(42f, 40f, 0f);
+            // Sun from the far end of the pool: the diver's front is lit whichever side the camera films from.
+            sun.transform.rotation = Quaternion.Euler(44f, 160f, 0f);
 
             var sky = Mat("Sky", "#FFFFFF", shader: "Skybox/Procedural");
             sky.SetFloat("_SunDisk", 0f);
@@ -142,28 +161,111 @@ namespace JumpGame.EditorTools
             surface.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         }
 
-        static void BuildTower()
+        static DivingTower BuildTower()
         {
             var root = new GameObject("Tower").transform;
             var concrete = Mat("Concrete", "#E4DED2");
             var accent = Mat("TowerAccent", "#EE6A55");
             var metal = Mat("Rail", "#F7F7F2", smoothness: 0.4f);
 
-            float pillarH = PlatformTop - DeckTop - 0.25f;
-            Box("Pillar", root, new Vector3(0f, DeckTop + pillarH * 0.5f, -3.9f), new Vector3(1.6f, pillarH, 1.4f), concrete);
-            Box("Platform", root, new Vector3(0f, PlatformTop - 0.125f, -2.3f), new Vector3(2f, 0.25f, 4.6f), accent);
-            Box("EdgeStripe", root, new Vector3(0f, PlatformTop + 0.005f, -0.08f), new Vector3(2f, 0.01f, 0.16f), metal);
+            var solids = new System.Collections.Generic.List<Bounds>();
 
-            foreach (float x in new[] { -0.95f, 0.95f })
+            // Concrete columns: a central core for the top platform and one on each side.
+            void Column(string n, float x, float top)
             {
-                foreach (float z in new[] { -4.4f, -3.1f, -1.8f })
-                    Put(hex, "Post", root, new Vector3(x, PlatformTop + 0.5f, z), new Vector3(0.06f, 1f, 0.06f), metal);
-                Box("Rail", root, new Vector3(x, PlatformTop + 1f, -3.1f), new Vector3(0.06f, 0.06f, 2.7f), metal);
-                Box("Rail_Mid", root, new Vector3(x, PlatformTop + 0.5f, -3.1f), new Vector3(0.04f, 0.04f, 2.7f), metal);
-                Box("Ladder_Side", root, new Vector3(x * 0.35f, 2.6f, -4.7f), new Vector3(0.06f, 4.8f, 0.06f), metal);
+                float h = top - DeckTop;
+                var c = new Vector3(x, DeckTop + h * 0.5f, TowerBack + 0.7f);
+                var s = new Vector3(1.4f, h, 1.4f);
+                Box(n, root, c, s, concrete);
+                solids.Add(new Bounds(c, s));
             }
-            for (float y = 0.7f; y < PlatformTop; y += 0.38f)
-                Box("Rung", root, new Vector3(0f, y, -4.7f), new Vector3(0.66f, 0.04f, 0.05f), metal);
+            Column("Core", 0f, 9.75f);
+            Column("Column_L", -2.6f, 7.25f);
+            Column("Column_R", 2.6f, 4.75f);
+
+            var edges = new Transform[Platforms.Length];
+            for (int i = 0; i < Platforms.Length; i++)
+            {
+                var (h, x, edgeZ) = Platforms[i];
+                float depth = edgeZ - TowerBack;
+                float midZ = (edgeZ + TowerBack) * 0.5f;
+                string n = "Platform_" + h.ToString("0.#").Replace(',', '_');
+
+                var slabCenter = new Vector3(x, h - 0.125f, midZ);
+                var slabSize = new Vector3(2f, 0.25f, depth);
+                Box(n, root, slabCenter, slabSize, accent);
+                solids.Add(new Bounds(slabCenter, slabSize));
+                Box(n + "_Edge", root, new Vector3(x, h + 0.005f, edgeZ - 0.08f), new Vector3(2f, 0.01f, 0.16f), metal);
+
+                // Railings along the back part only; the front stays open for the jump.
+                float railEnd = edgeZ - 1.6f;
+                float railLen = railEnd - (TowerBack + 0.2f);
+                float railMid = (railEnd + TowerBack + 0.2f) * 0.5f;
+                foreach (float side in new[] { -0.95f, 0.95f })
+                {
+                    float rx = x + side;
+                    for (float z = TowerBack + 0.2f; z <= railEnd + 0.01f; z += railLen / 2f)
+                        Put(hex, "Post", root, new Vector3(rx, h + 0.5f, z), new Vector3(0.06f, 1f, 0.06f), metal);
+                    Box("Rail", root, new Vector3(rx, h + 1f, railMid), new Vector3(0.06f, 0.06f, railLen), metal);
+                    Box("Rail_Mid", root, new Vector3(rx, h + 0.5f, railMid), new Vector3(0.04f, 0.04f, railLen), metal);
+                }
+
+                var edge = new GameObject(n + "_Mark").transform;
+                edge.SetParent(root, false);
+                edge.position = new Vector3(x, h, edgeZ);
+                edges[i] = edge;
+            }
+
+            // Ladder up the back of the core.
+            foreach (float x in new[] { -0.3f, 0.3f })
+                Box("Ladder_Side", root, new Vector3(x, 5f, TowerBack - 0.1f), new Vector3(0.06f, 9.6f, 0.06f), metal);
+            for (float y = 0.7f; y < 9.9f; y += 0.38f)
+                Box("Rung", root, new Vector3(0f, y, TowerBack - 0.1f), new Vector3(0.6f, 0.04f, 0.05f), metal);
+
+            var tower = root.gameObject.AddComponent<DivingTower>();
+            var so = new SerializedObject(tower);
+            var arr = so.FindProperty("edges");
+            arr.arraySize = edges.Length;
+            for (int i = 0; i < edges.Length; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = edges[i];
+            var boxes = so.FindProperty("solids");
+            boxes.arraySize = solids.Count;
+            for (int i = 0; i < solids.Count; i++) boxes.GetArrayElementAtIndex(i).boundsValue = solids[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return tower;
+        }
+
+        // Level list. Distances and thresholds come from DiveCapture.Probe runs.
+        static LevelSet LevelAsset()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(LevelsPath));
+            var set = AssetDatabase.LoadAssetAtPath<LevelSet>(LevelsPath);
+            if (set == null)
+            {
+                set = ScriptableObject.CreateInstance<LevelSet>();
+                AssetDatabase.CreateAsset(set, LevelsPath);
+            }
+
+            LevelInfo L(int platform, float distance, float radius, int b, int s, int g, TaskKind task, float turns = 0f) => new LevelInfo
+            {
+                platform = platform, zoneDistance = distance, zoneRadius = radius,
+                bronze = b, silver = s, gold = g, task = task, taskTurns = turns
+            };
+
+            set.levels = new[]
+            {
+                // Probe, straight dives: 3 m reaches 1.6-5.2 m, 5 m 1.9-5.9, 7.5 m 2.2-6.7, 10 m 2.4-7.5.
+                // Max turns: 2 / 2 / 2.5 / 3, clean head-first: 1.5 / 1.5 / 2.5 / 2.5. Gold sits near the best possible dive.
+                L(0, 2.2f, 1.6f, 150, 300, 500, TaskKind.HeadFirst),
+                L(0, 3.0f, 1.4f, 200, 450, 700, TaskKind.FeetFirst),
+                L(1, 3.5f, 1.3f, 250, 500, 800, TaskKind.Turns, 1f),
+                L(1, 4.3f, 1.1f, 300, 550, 850, TaskKind.CannonballInZone),
+                L(2, 4.0f, 1.2f, 350, 700, 1100, TaskKind.Turns, 1.5f),
+                L(2, 5.2f, 1.0f, 400, 750, 1150, TaskKind.ZoneNoBuoys),
+                L(3, 4.6f, 1.1f, 450, 850, 1200, TaskKind.Turns, 2f),
+                L(3, 6.0f, 0.9f, 500, 950, 1300, TaskKind.CleanTurns, 2.5f)
+            };
+            EditorUtility.SetDirty(set);
+            return set;
         }
 
         static void BuildSurroundings()
@@ -190,35 +292,46 @@ namespace JumpGame.EditorTools
             Box("Wall_N", root, new Vector3(0f, 0.9f, 20.1f), new Vector3(24.4f, 1.2f, 0.25f), wall);
             Box("Wall_S", root, new Vector3(0f, 0.9f, -8.1f), new Vector3(24.4f, 1.2f, 0.25f), wall);
 
-            for (int i = 0; i < 4; i++)
-            {
-                float z = 0.5f + i * 3.4f;
-                Chair(root, new Vector3(8f, DeckTop, z), i % 2 == 0 ? teal : white, white);
-                if (i < 3) Umbrella(root, new Vector3(9.3f, DeckTop, z + 1.7f), i % 2 == 0 ? coral : yellow);
-            }
-
+            // The camera films from either side depending on the platform, so both decks get furniture.
             var rng = new System.Random(3);
-            Vector3[] trees =
+            foreach (float side in new[] { 1f, -1f })
             {
-                new(10.6f, 0f, -6f), new(10.8f, 0f, 16.5f), new(-10.5f, 0f, -5f), new(-10.7f, 0f, 9f),
-                new(16f, 0f, -2f), new(18f, 0f, 9f), new(15.5f, 0f, 19f), new(22f, 0f, 3f), new(24f, 0f, 14f)
-            };
-            foreach (var p in trees)
-            {
-                float s = 0.85f + (float)rng.NextDouble() * 0.45f;
-                Tree(root, p, s, rng.Next(2) == 0 ? leaves : leavesDark, trunk);
-            }
+                // Furniture stays in the far half: the near half of each deck is right under the camera.
+                for (int i = 0; i < 3; i++)
+                {
+                    float z = 8.5f + i * 3.2f;
+                    bool odd = (i + (side < 0 ? 1 : 0)) % 2 == 0;
+                    Chair(root, new Vector3(8f * side, DeckTop, z), 0f, odd ? teal : white, white);
+                    if (i < 2) Umbrella(root, new Vector3(9.3f * side, DeckTop, z + 1.6f), odd ? coral : yellow);
+                }
+                Chair(root, new Vector3(2.2f * side, DeckTop, 17.8f), 180f, side > 0 ? teal : white, white);
+                Umbrella(root, new Vector3(3.8f * side, DeckTop, 18.4f), side > 0 ? yellow : coral);
 
-            Put(rough, "Hill_1", root, new Vector3(70f, -6f, -10f), new Vector3(60f, 26f, 50f), hill);
-            Put(rough, "Hill_2", root, new Vector3(85f, -10f, 30f), new Vector3(80f, 36f, 60f), hill);
-            Put(rough, "Hill_3", root, new Vector3(60f, -8f, 55f), new Vector3(50f, 24f, 40f), hill);
+                // Only trees behind the far walls: anything at the near edge would end up right in front of the lens.
+                Vector3[] trees =
+                {
+                    new(10.8f, 0f, 16.5f), new(16f, 0f, -2f), new(18f, 0f, 9f),
+                    new(15.5f, 0f, 19f), new(22f, 0f, 3f), new(24f, 0f, 14f)
+                };
+                foreach (var p in trees)
+                {
+                    float s = 0.85f + (float)rng.NextDouble() * 0.45f;
+                    var at = new Vector3(p.x * side + (float)rng.NextDouble() - 0.5f, 0f, p.z + (float)rng.NextDouble() * 2f - 1f);
+                    Tree(root, at, s, rng.Next(2) == 0 ? leaves : leavesDark, trunk);
+                }
+
+                Put(rough, "Hill_1", root, new Vector3(70f * side, -6f, -10f), new Vector3(60f, 26f, 50f), hill);
+                Put(rough, "Hill_2", root, new Vector3(85f * side, -10f, 30f), new Vector3(80f, 36f, 60f), hill);
+                Put(rough, "Hill_3", root, new Vector3(60f * side, -8f, 55f), new Vector3(50f, 24f, 40f), hill);
+            }
         }
 
-        static void Chair(Transform root, Vector3 at, Material cushion, Material frame)
+        static void Chair(Transform root, Vector3 at, float yaw, Material cushion, Material frame)
         {
             var c = new GameObject("DeckChair").transform;
             c.SetParent(root, false);
             c.localPosition = at;
+            c.localRotation = Quaternion.Euler(0f, yaw, 0f);
             Box("Frame", c, new Vector3(0f, 0.22f, 0f), new Vector3(0.7f, 0.08f, 1.9f), frame);
             Box("Seat", c, new Vector3(0f, 0.3f, 0.15f), new Vector3(0.62f, 0.08f, 1.3f), cushion);
             var back = Box("Back", c, new Vector3(0f, 0.55f, -0.7f), new Vector3(0.62f, 0.08f, 0.7f), cushion);
@@ -250,7 +363,7 @@ namespace JumpGame.EditorTools
         static LandingZone BuildZone()
         {
             var go = new GameObject("LandingZone");
-            go.transform.position = ZoneCenter;
+            go.transform.position = new Vector3(Platforms[1].x, 0f, Platforms[1].edgeZ + 4f);
 
             var red = Mat("BuoyRed", "#F2434F", smoothness: 0.45f);
             var white = Mat("BuoyWhite", "#F7F7F2", smoothness: 0.45f);
@@ -263,17 +376,6 @@ namespace JumpGame.EditorTools
                 new Vector2(0.058f, -0.058f), new Vector2(0.036f, -0.082f), new Vector2(0.012f, -0.088f)
             }, 12, true);
 
-            const int count = 44;
-            var floats = new Transform[count];
-            for (int i = 0; i < count; i++)
-            {
-                float a = i / (float)count * Mathf.PI * 2f;
-                var p = new Vector3(Mathf.Cos(a) * ZoneRadius, 0.035f, Mathf.Sin(a) * ZoneRadius);
-                var tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
-                floats[i] = Put(floatMesh, "Float_" + i, go.transform, p, Vector3.one, (i / 2) % 2 == 0 ? red : white);
-                floats[i].localRotation = Quaternion.LookRotation(tangent) * Quaternion.Euler(90f, 0f, 0f);
-            }
-
             var ropeGo = new GameObject("Rope");
             ropeGo.transform.SetParent(go.transform, false);
             var rope = ropeGo.AddComponent<LineRenderer>();
@@ -283,17 +385,14 @@ namespace JumpGame.EditorTools
             rope.loop = true;
             rope.useWorldSpace = true;
             rope.shadowCastingMode = ShadowCastingMode.Off;
-            rope.positionCount = count;
-            for (int i = 0; i < count; i++) rope.SetPosition(i, ZoneCenter + floats[i].localPosition);
+            rope.positionCount = 0;
 
+            // Floats are created by the zone itself for each level's radius.
             var zone = go.AddComponent<LandingZone>();
-            var so = new SerializedObject(zone);
-            so.FindProperty("radius").floatValue = ZoneRadius;
-            so.FindProperty("rope").objectReferenceValue = rope;
-            var arr = so.FindProperty("floats");
-            arr.arraySize = count;
-            for (int i = 0; i < count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = floats[i];
-            so.ApplyModifiedPropertiesWithoutUndo();
+            Link(zone, "rope", rope);
+            Link(zone, "floatMesh", floatMesh);
+            Link(zone, "floatRed", red);
+            Link(zone, "floatWhite", white);
             return zone;
         }
 
@@ -379,7 +478,8 @@ namespace JumpGame.EditorTools
             var footMesh = LowPolyMeshes.Capsule("Body_Foot", 0.05f, 0.042f, 0.17f);
 
             var root = new GameObject("Diver");
-            root.transform.position = new Vector3(0f, PlatformTop + 0.9f, -0.25f);
+            // Placed on the 5 m platform; GameFlow moves it to the current level's platform.
+            root.transform.position = new Vector3(Platforms[1].x, Platforms[1].height + 0.9f, Platforms[1].edgeZ - 0.25f);
 
             var rig = new GameObject("Rig").transform;
             rig.SetParent(root.transform, false);
@@ -441,7 +541,7 @@ namespace JumpGame.EditorTools
             return diver;
         }
 
-        static void BuildCamera(Diver diver, LandingZone zone)
+        static DiveCamera BuildCamera(Diver diver, LandingZone zone)
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = go.AddComponent<Camera>();
@@ -458,11 +558,18 @@ namespace JumpGame.EditorTools
             var focus = Vector3.Lerp(diver.transform.position, zone.transform.position, 0.3f);
             go.transform.position = focus + new Vector3(-7.5f, 2.5f, -1.5f);
             go.transform.LookAt(focus);
+            return follow;
         }
 
-        static void BuildHud(Diver diver)
+        static void BuildHud(Diver diver, GameFlow flow)
         {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            var pill = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+
+            var es = new GameObject("EventSystem");
+            es.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
 
             var canvasGo = new GameObject("Hud");
             var canvas = canvasGo.AddComponent<Canvas>();
@@ -471,6 +578,48 @@ namespace JumpGame.EditorTools
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1280f, 720f);
             scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            RectTransform Rect(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size)
+            {
+                var go = new GameObject(n, typeof(RectTransform));
+                go.transform.SetParent(parent, false);
+                var rt = (RectTransform)go.transform;
+                rt.anchorMin = rt.anchorMax = rt.pivot = anchor;
+                rt.anchoredPosition = pos;
+                rt.sizeDelta = size;
+                return rt;
+            }
+
+            Image Dot(string n, Transform parent, Vector2 anchor, Vector2 pos, float size)
+            {
+                var img = Rect(n, parent, anchor, pos, new Vector2(size, size)).gameObject.AddComponent<Image>();
+                img.sprite = knob;
+                img.raycastTarget = false;
+                var o = img.gameObject.AddComponent<Outline>();
+                o.effectColor = new Color(0.1f, 0.14f, 0.25f, 0.8f);
+                o.effectDistance = new Vector2(2f, -2f);
+                return img;
+            }
+
+            Button Btn(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, string label, string color, int fontSize)
+            {
+                var rt = Rect(n, parent, anchor, pos, size);
+                var img = rt.gameObject.AddComponent<Image>();
+                img.sprite = pill;
+                img.type = Image.Type.Sliced;
+                img.color = Hex(color);
+                var shadow = rt.gameObject.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0.1f, 0.13f, 0.25f, 0.5f);
+                shadow.effectDistance = new Vector2(0f, -5f);
+                var b = rt.gameObject.AddComponent<Button>();
+                var colors = b.colors;
+                colors.pressedColor = new Color(0.85f, 0.85f, 0.85f);
+                b.colors = colors;
+                var t = Label("Label", rt, new Vector2(0.5f, 0.5f), Vector2.zero, size, fontSize, TextAnchor.MiddleCenter);
+                t.text = label;
+                return b;
+            }
 
             Text Label(string n, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size, int fontSize, TextAnchor align, FontStyle style = FontStyle.Bold)
             {
@@ -499,30 +648,65 @@ namespace JumpGame.EditorTools
             }
 
             var root = canvasGo.transform;
-            var best = Label("Best", root, new Vector2(0f, 1f), new Vector2(28f, -22f), new Vector2(400f, 50f), 30, TextAnchor.UpperLeft);
-            var turns = Label("Turns", root, new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(600f, 130f), 96, TextAnchor.UpperCenter);
+            var top = new Vector2(0.5f, 1f);
+            var topLeft = new Vector2(0f, 1f);
+            var topRight = new Vector2(1f, 1f);
+            var center = new Vector2(0.5f, 0.5f);
+
+            // Level selector, top centre.
+            var levelTitle = Label("LevelTitle", root, top, new Vector2(0f, -22f), new Vector2(460f, 50f), 34, TextAnchor.MiddleCenter);
+            var prev = Btn("Prev", root, top, new Vector2(-260f, -22f), new Vector2(64f, 56f), "<", "#2BA39C", 34);
+            var next = Btn("Next", root, top, new Vector2(260f, -22f), new Vector2(64f, 56f), ">", "#2BA39C", 34);
+
+            // Goals and task, top left.
+            var dots = new Image[3];
+            var goalTexts = new Text[3];
+            for (int i = 0; i < 3; i++)
+            {
+                float x = 28f + i * 112f;
+                dots[i] = Dot("Goal_" + i, root, topLeft, new Vector2(x, -24f), 30f);
+                goalTexts[i] = Label("GoalText_" + i, root, topLeft, new Vector2(x + 38f, -22f), new Vector2(80f, 34f), 26, TextAnchor.MiddleLeft);
+            }
+            var taskDot = Dot("TaskDot", root, topLeft, new Vector2(32f, -74f), 22f);
+            var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(520f, 34f), 24, TextAnchor.MiddleLeft);
+            var best = Label("Best", root, topRight, new Vector2(-28f, -22f), new Vector2(360f, 50f), 28, TextAnchor.MiddleRight);
+
+            var turns = Label("Turns", root, top, new Vector2(0f, -90f), new Vector2(600f, 130f), 96, TextAnchor.UpperCenter);
             var hint = Label("Hint", root, new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1100f, 120f), 32, TextAnchor.LowerCenter);
 
+            // Result panel.
             var panelGo = new GameObject("Result", typeof(RectTransform));
             panelGo.transform.SetParent(root, false);
             var panel = (RectTransform)panelGo.transform;
             panel.anchorMin = new Vector2(0f, 0.5f);
             panel.anchorMax = new Vector2(1f, 0.5f);
-            panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(0f, 400f);
-            panel.anchoredPosition = new Vector2(0f, 20f);
+            panel.pivot = center;
+            panel.sizeDelta = new Vector2(0f, 500f);
+            panel.anchoredPosition = new Vector2(0f, 0f);
             var band = panelGo.AddComponent<Image>();
-            band.color = new Color(0.1f, 0.14f, 0.26f, 0.42f);
+            band.color = new Color(0.1f, 0.14f, 0.26f, 0.45f);
             band.raycastTarget = false;
 
-            var title = Label("Title", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(1000f, 90f), 70, TextAnchor.MiddleCenter);
-            var details = Label("Details", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, 45f), new Vector2(1000f, 50f), 32, TextAnchor.MiddleCenter, FontStyle.Normal);
-            var score = Label("Score", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, -45f), new Vector2(1000f, 120f), 104, TextAnchor.MiddleCenter);
-            var tap = Label("Tap", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(1000f, 40f), 28, TextAnchor.MiddleCenter, FontStyle.Normal);
-            tap.text = "Нажми, чтобы прыгнуть ещё раз";
+            var title = Label("Title", panel, center, new Vector2(0f, 185f), new Vector2(1000f, 90f), 66, TextAnchor.MiddleCenter);
+            var details = Label("Details", panel, center, new Vector2(0f, 120f), new Vector2(1000f, 50f), 30, TextAnchor.MiddleCenter, FontStyle.Normal);
+            var score = Label("Score", panel, center, new Vector2(0f, 40f), new Vector2(1000f, 120f), 100, TextAnchor.MiddleCenter);
+            var medals = new Image[3];
+            for (int i = 0; i < 3; i++)
+                medals[i] = Dot("Medal_" + i, panel, center, new Vector2((i - 1) * 74f, -50f), 54f);
+            var task = Label("Task", panel, center, new Vector2(0f, -110f), new Vector2(1000f, 40f), 28, TextAnchor.MiddleCenter);
+            var retry = Btn("Retry", panel, center, new Vector2(-130f, -185f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
+            var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -185f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);
 
             var hud = canvasGo.AddComponent<DiveHud>();
             Link(hud, "diver", diver);
+            Link(hud, "flow", flow);
+            Link(hud, "levelTitle", levelTitle);
+            Link(hud, "prevButton", prev);
+            Link(hud, "nextButton", next);
+            LinkArray(hud, "goalDots", dots);
+            LinkArray(hud, "goalTexts", goalTexts);
+            Link(hud, "taskDot", taskDot);
+            Link(hud, "taskText", taskText);
             Link(hud, "best", best);
             Link(hud, "turns", turns);
             Link(hud, "hint", hint);
@@ -530,7 +714,19 @@ namespace JumpGame.EditorTools
             Link(hud, "resultTitle", title);
             Link(hud, "resultDetails", details);
             Link(hud, "resultScore", score);
-            Link(hud, "resultTap", tap);
+            LinkArray(hud, "resultMedals", medals);
+            Link(hud, "resultTask", task);
+            Link(hud, "retryButton", retry);
+            Link(hud, "nextLevelButton", nextLevel);
+        }
+
+        static void LinkArray(Object owner, string field, Object[] values)
+        {
+            var so = new SerializedObject(owner);
+            var prop = so.FindProperty(field);
+            prop.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++) prop.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static Transform Pivot(string name, Transform parent, Vector3 pos)

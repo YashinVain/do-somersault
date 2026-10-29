@@ -10,7 +10,9 @@ namespace JumpGame
         Feet,
         Cannonball,
         BellyFlop,
-        Slipped
+        Slipped,
+        HitTower,
+        OnTower
     }
 
     public struct DiveResult
@@ -22,7 +24,7 @@ namespace JumpGame
         public float multiplier;
         public int score;
 
-        public bool Failed => entry == EntryKind.BellyFlop || entry == EntryKind.Slipped;
+        public bool Failed => entry >= EntryKind.BellyFlop;
 
         public string EntryLabel => entry switch
         {
@@ -32,6 +34,8 @@ namespace JumpGame
             EntryKind.Feet => "Солдатиком",
             EntryKind.Cannonball => "Бомбочка!",
             EntryKind.Slipped => "Сорвался!",
+            EntryKind.HitTower => "Удар о вышку!",
+            EntryKind.OnTower => "Остался на вышке",
             _ => "Плашмя!"
         };
 
@@ -50,9 +54,10 @@ namespace JumpGame
     {
         const int PointsPerHalfTurn = 100;
 
-        public static DiveResult Slip(bool inZone) => new DiveResult
+        // Slipped, hit the tower or never left it: no points.
+        public static DiveResult Fail(EntryKind kind, bool inZone) => new DiveResult
         {
-            entry = EntryKind.Slipped,
+            entry = kind,
             inZone = inZone,
             multiplier = 1f
         };
