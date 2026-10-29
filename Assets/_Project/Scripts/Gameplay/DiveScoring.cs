@@ -9,17 +9,19 @@ namespace JumpGame
         FeetClean,
         Feet,
         Cannonball,
-        BellyFlop
+        BellyFlop,
+        Slipped
     }
 
     public struct DiveResult
     {
         public EntryKind entry;
         public int halfTurns;
+        public bool inZone;
         public float multiplier;
         public int score;
 
-        public bool Failed => entry == EntryKind.BellyFlop;
+        public bool Failed => entry == EntryKind.BellyFlop || entry == EntryKind.Slipped;
 
         public string EntryLabel => entry switch
         {
@@ -28,6 +30,7 @@ namespace JumpGame
             EntryKind.FeetClean => "Ровно солдатиком",
             EntryKind.Feet => "Солдатиком",
             EntryKind.Cannonball => "Бомбочка!",
+            EntryKind.Slipped => "Сорвался!",
             _ => "Плашмя!"
         };
 
@@ -46,11 +49,22 @@ namespace JumpGame
     {
         const int PointsPerHalfTurn = 60;
 
-        // rotation: total forward rotation in degrees since takeoff (0 = upright).
-        public static DiveResult Evaluate(float rotation, float tuck, float multiplier)
+        public static DiveResult Slip(bool inZone) => new DiveResult
         {
-            var r = new DiveResult { multiplier = multiplier };
-            r.halfTurns = Mathf.Max(0, Mathf.RoundToInt(rotation / 180f));
+            entry = EntryKind.Slipped,
+            inZone = inZone,
+            multiplier = 1f
+        };
+
+        // rotation: total forward rotation in degrees since leaving the stand (0 = upright).
+        public static DiveResult Evaluate(float rotation, float tuck, bool inZone, float zoneMultiplier)
+        {
+            var r = new DiveResult
+            {
+                inZone = inZone,
+                multiplier = inZone ? zoneMultiplier : 1f,
+                halfTurns = Mathf.Max(0, Mathf.RoundToInt(rotation / 180f))
+            };
 
             float n = Mathf.Repeat(rotation, 360f);
             float fromHead = Mathf.Abs(n - 180f);
@@ -60,7 +74,7 @@ namespace JumpGame
             if (tuck > 0.5f)
             {
                 r.entry = EntryKind.Cannonball;
-                r.score = Mathf.RoundToInt((40 + r.halfTurns * 20) * multiplier);
+                r.score = Mathf.RoundToInt((40 + r.halfTurns * 20) * r.multiplier);
                 return r;
             }
 
@@ -75,7 +89,7 @@ namespace JumpGame
                 return r;
             }
 
-            r.score = Mathf.RoundToInt((r.halfTurns * PointsPerHalfTurn + bonus) * multiplier);
+            r.score = Mathf.RoundToInt((r.halfTurns * PointsPerHalfTurn + bonus) * r.multiplier);
             return r;
         }
     }

@@ -6,15 +6,16 @@ namespace JumpGame
     public class Splash : MonoBehaviour
     {
         [SerializeField] Transform ripple;
-        [SerializeField] float rippleTime = 1.2f;
+        [SerializeField] float rippleTime = 1.4f;
 
         ParticleSystem drops;
         float rippleAge = -1f;
         float rippleSize;
 
+        ParticleSystem Drops => drops != null ? drops : drops = GetComponent<ParticleSystem>();
+
         void Awake()
         {
-            drops = GetComponent<ParticleSystem>();
             if (ripple != null) ripple.gameObject.SetActive(false);
         }
 
@@ -22,24 +23,24 @@ namespace JumpGame
         {
             float size = entry switch
             {
-                EntryKind.HeadClean => 0.35f,
-                EntryKind.FeetClean => 0.5f,
-                EntryKind.Head or EntryKind.Feet => 0.75f,
+                EntryKind.HeadClean => 0.3f,
+                EntryKind.FeetClean => 0.45f,
+                EntryKind.Head or EntryKind.Feet => 0.7f,
                 EntryKind.Cannonball => 1.6f,
-                _ => 1.3f
+                _ => 1.25f
             };
 
             transform.position = point;
-            var main = drops.main;
-            main.startSpeedMultiplier = 3f + size * 4f;
-            main.startSizeMultiplier = 0.12f + size * 0.08f;
-            drops.Emit(Mathf.RoundToInt(15 + size * 60));
+            var main = Drops.main;
+            main.startSpeedMultiplier = 2.5f + size * 3.5f;
+            main.startSizeMultiplier = 0.08f + size * 0.06f;
+            Drops.Emit(Mathf.RoundToInt(12 + size * 50));
 
-            rippleSize = 1.2f + size * 2.5f;
+            rippleSize = 1f + size * 2.2f;
             rippleAge = 0f;
             if (ripple != null)
             {
-                ripple.position = point + Vector3.up * 0.02f;
+                ripple.position = point + Vector3.up * 0.015f;
                 ripple.gameObject.SetActive(true);
             }
         }
@@ -58,7 +59,8 @@ namespace JumpGame
             }
 
             float s = Mathf.Lerp(0.2f, rippleSize, 1f - (1f - t) * (1f - t));
-            ripple.localScale = new Vector3(s, 0.01f, s);
+            float thin = Mathf.Lerp(1f, 0.2f, t);
+            ripple.localScale = new Vector3(s, thin, s);
         }
     }
 }
