@@ -114,6 +114,8 @@ namespace JumpGame
 
             if (r.entry == EntryKind.Slipped)
                 resultDetails.text = "Передержал на краю";
+            else if (r.hitBuoys)
+                resultDetails.text = r.TurnsLabel + "   задел буйки";
             else
                 resultDetails.text = r.TurnsLabel + "   " + (r.inZone ? "в зоне ×" + r.multiplier.ToString("0.#") : "мимо зоны");
 

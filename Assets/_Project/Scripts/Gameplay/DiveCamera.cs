@@ -13,6 +13,8 @@ namespace JumpGame
         [SerializeField, Range(0f, 1f)] float zoneBiasStanding = 0.3f;
         [SerializeField, Range(0f, 1f)] float zoneBiasFlying = 0.2f;
         [SerializeField] float followSharpness = 3.5f;
+        [Tooltip("Offset scale while the diver is in the air: below 1 moves the camera closer.")]
+        [SerializeField] float flightZoom = 0.8f;
         [SerializeField] float minHeight = 1.2f;
 
         [Header("Lens")]
@@ -22,6 +24,7 @@ namespace JumpGame
 
         Camera cam;
         Vector3 focus;
+        float zoom = 1f;
 
         void Start() => Snap();
 
@@ -30,6 +33,7 @@ namespace JumpGame
         public void Snap()
         {
             focus = WantedFocus();
+            zoom = WantedZoom();
             Place();
         }
 
@@ -37,8 +41,11 @@ namespace JumpGame
         {
             float k = 1f - Mathf.Exp(-followSharpness * dt);
             focus = Vector3.Lerp(focus, WantedFocus(), k);
+            zoom = Mathf.Lerp(zoom, WantedZoom(), k * 0.6f);
             Place();
         }
+
+        float WantedZoom() => diver.Current == Diver.State.Ready || diver.Current == Diver.State.Crouching ? 1f : flightZoom;
 
         Vector3 WantedFocus()
         {
@@ -65,7 +72,7 @@ namespace JumpGame
             float vForH = 2f * Mathf.Atan(Mathf.Tan(hHalf) / cam.aspect) * Mathf.Rad2Deg;
             cam.fieldOfView = Mathf.Max(baseFov, vForH);
 
-            Vector3 pos = focus + offset;
+            Vector3 pos = focus + offset * zoom;
             pos.y = Mathf.Max(pos.y, minHeight);
             transform.position = pos;
             transform.LookAt(focus);

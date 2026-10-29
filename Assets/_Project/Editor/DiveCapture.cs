@@ -30,7 +30,7 @@ namespace JumpGame.EditorTools
         {
             EditorSceneManager.OpenScene(PrototypeSceneBuilder.ScenePath);
             var diver = UnityEngine.Object.FindAnyObjectByType<Diver>();
-            var pose = diver.GetComponent<DiverPose>();
+            var zone = UnityEngine.Object.FindAnyObjectByType<LandingZone>();
             var follow = UnityEngine.Object.FindAnyObjectByType<DiveCamera>();
             var cam = follow.GetComponent<Camera>();
             diver.Init();
@@ -40,12 +40,22 @@ namespace JumpGame.EditorTools
             follow.Snap();
             SaveFrame(cam, 1280, 720, "Logs/capture_overview.png");
 
+            // Close-ups of the body: standing, and a few poses forced through the simulation.
+            var body = diver.transform.position;
+            cam.transform.position = body + new Vector3(-1.9f, 0.35f, 0.9f);
+            cam.transform.LookAt(body + new Vector3(0f, 0.15f, 0f));
+            SaveFrame(cam, 960, 720, "Logs/capture_body.png");
+            cam.transform.position = body + new Vector3(-1.3f, 0.6f, 1.3f);
+            cam.transform.LookAt(body + new Vector3(0f, 0.3f, 0f));
+            SaveFrame(cam, 960, 720, "Logs/capture_face.png");
+            follow.Snap();
+
             var scenarios = new[]
             {
                 new Scenario
                 {
                     name = "good",
-                    held = t => t < 1.0f || (t > 1.12f && t < 2.25f),
+                    held = t => t < 1.0f || (t > 1.12f && t < 1.95f),
                     frames = new[] { 0f, 0.5f, 0.95f, 1.1f, 1.3f, 1.5f, 1.7f, 1.9f, 2.1f, 2.3f, 2.5f, 2.9f }
                 },
                 new Scenario
@@ -59,16 +69,22 @@ namespace JumpGame.EditorTools
                     name = "cannonball",
                     held = t => t < 0.9f || t > 1.05f,
                     frames = new[] { 0.3f, 0.85f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f, 2.0f, 2.2f, 2.4f, 2.6f, 2.9f }
+                },
+                new Scenario
+                {
+                    name = "rope",
+                    held = t => t < 0.62f,
+                    frames = new[] { 1.9f, 2.0f, 2.1f, 2.2f, 2.3f, 2.4f, 2.5f, 2.6f, 2.8f, 3.0f, 3.3f, 3.6f }
                 }
             };
 
             foreach (var s in scenarios)
-                RunScenario(s, diver, pose, follow, cam);
+                RunScenario(s, diver, zone, follow, cam);
 
             Debug.Log("DiveCapture done");
         }
 
-        static void RunScenario(Scenario s, Diver diver, DiverPose pose, DiveCamera follow, Camera cam)
+        static void RunScenario(Scenario s, Diver diver, LandingZone zone, DiveCamera follow, Camera cam)
         {
             diver.ResetToStart();
             diver.Step(Dt, false);
@@ -87,19 +103,19 @@ namespace JumpGame.EditorTools
                 {
                     int col = next % Columns, row = rows - 1 - next / Columns;
                     Render(cam, FrameW, FrameH, sheet, col * FrameW, row * FrameH);
-                    log += $"  t={t:0.00} {diver.Current} rot={diver.Rotation:0} y={diver.transform.position.y:0.00} z={diver.transform.position.z:0.00}\n";
+                    log += $"  t={t:0.00} {diver.Current} held={s.held(t)} rot={diver.Rotation:0} spin={diver.Spin:0} y={diver.transform.position.y:0.00} z={diver.transform.position.z:0.00}\n";
                     next++;
                 }
 
                 diver.Step(Dt, s.held(t));
-                pose.Step(Dt);
+                zone.Step(Dt);
                 follow.Step(Dt);
                 t += Dt;
 
                 if (!reported && diver.Current == Diver.State.Underwater)
                 {
                     var r = diver.LastResult;
-                    log += $"  ENTRY at t={t:0.00}: {r.entry} turns={r.halfTurns / 2f} inZone={r.inZone} score={r.score} z={diver.transform.position.z:0.00}\n";
+                    log += $"  ENTRY at t={t:0.00}: {r.entry} turns={r.halfTurns / 2f} inZone={r.inZone} hitBuoys={r.hitBuoys} score={r.score} z={diver.transform.position.z:0.00}\n";
                     reported = true;
                 }
             }

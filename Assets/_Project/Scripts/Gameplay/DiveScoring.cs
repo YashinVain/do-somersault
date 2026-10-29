@@ -18,6 +18,7 @@ namespace JumpGame
         public EntryKind entry;
         public int halfTurns;
         public bool inZone;
+        public bool hitBuoys;
         public float multiplier;
         public int score;
 
@@ -47,7 +48,7 @@ namespace JumpGame
 
     public static class DiveScoring
     {
-        const int PointsPerHalfTurn = 60;
+        const int PointsPerHalfTurn = 100;
 
         public static DiveResult Slip(bool inZone) => new DiveResult
         {
@@ -57,12 +58,14 @@ namespace JumpGame
         };
 
         // rotation: total forward rotation in degrees since leaving the stand (0 = upright).
-        public static DiveResult Evaluate(float rotation, float tuck, bool inZone, float zoneMultiplier)
+        // Touching the buoy rope cancels the zone bonus.
+        public static DiveResult Evaluate(float rotation, float tuck, bool inZone, bool hitBuoys, float zoneMultiplier)
         {
             var r = new DiveResult
             {
                 inZone = inZone,
-                multiplier = inZone ? zoneMultiplier : 1f,
+                hitBuoys = hitBuoys,
+                multiplier = inZone && !hitBuoys ? zoneMultiplier : 1f,
                 halfTurns = Mathf.Max(0, Mathf.RoundToInt(rotation / 180f))
             };
 
@@ -74,12 +77,12 @@ namespace JumpGame
             if (tuck > 0.5f)
             {
                 r.entry = EntryKind.Cannonball;
-                r.score = Mathf.RoundToInt((40 + r.halfTurns * 20) * r.multiplier);
+                r.score = Mathf.RoundToInt((50 + r.halfTurns * 30) * r.multiplier);
                 return r;
             }
 
-            if (fromHead <= 15f) { r.entry = EntryKind.HeadClean; bonus = 200; }
-            else if (fromHead <= 35f) { r.entry = EntryKind.Head; bonus = 100; }
+            if (fromHead <= 15f) { r.entry = EntryKind.HeadClean; bonus = 150; }
+            else if (fromHead <= 35f) { r.entry = EntryKind.Head; bonus = 75; }
             else if (fromFeet <= 15f) { r.entry = EntryKind.FeetClean; bonus = 60; }
             else if (fromFeet <= 35f) { r.entry = EntryKind.Feet; bonus = 30; }
             else

@@ -73,6 +73,69 @@ namespace JumpGame.EditorTools
             return Save(name, verts);
         }
 
+        // Surface of revolution around Y. Profile points are (radius, height), listed from top to bottom.
+        public static Mesh Lathe(string name, IList<Vector2> profile, int sides, bool smooth)
+        {
+            var verts = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var tris = new List<int>();
+            int rings = profile.Count;
+
+            for (int i = 0; i < rings; i++)
+            {
+                Vector2 t = profile[Mathf.Min(i + 1, rings - 1)] - profile[Mathf.Max(i - 1, 0)];
+                Vector2 n2 = new Vector2(-t.y, t.x).normalized;
+                for (int j = 0; j <= sides; j++)
+                {
+                    float a = j / (float)sides * Mathf.PI * 2f;
+                    float c = Mathf.Cos(a), s = Mathf.Sin(a);
+                    verts.Add(new Vector3(c * profile[i].x, profile[i].y, s * profile[i].x));
+                    normals.Add(new Vector3(c * n2.x, n2.y, s * n2.x));
+                }
+            }
+
+            int row = sides + 1;
+            for (int i = 0; i < rings - 1; i++)
+                for (int j = 0; j < sides; j++)
+                {
+                    int ul = i * row + j, ur = ul + 1, ll = ul + row, lr = ll + 1;
+                    tris.AddRange(new[] { ul, ur, lr, ul, lr, ll });
+                }
+
+            if (smooth) return Save(name, verts, normals, tris);
+
+            var flat = new List<Vector3>();
+            foreach (int i in tris) flat.Add(verts[i]);
+            return Save(name, flat);
+        }
+
+        public static Mesh Capsule(string name, float topRadius, float bottomRadius, float length, int sides = 14, int capRings = 5)
+        {
+            var p = new List<Vector2>();
+            for (int k = 0; k <= capRings; k++)
+            {
+                float phi = k / (float)capRings * Mathf.PI * 0.5f;
+                p.Add(new Vector2(Mathf.Sin(phi) * topRadius, Mathf.Cos(phi) * topRadius));
+            }
+            for (int k = 0; k <= capRings; k++)
+            {
+                float phi = Mathf.PI * 0.5f + k / (float)capRings * Mathf.PI * 0.5f;
+                p.Add(new Vector2(Mathf.Sin(phi) * bottomRadius, -length + Mathf.Cos(phi) * bottomRadius));
+            }
+            return Lathe(name, p, sides, true);
+        }
+
+        public static Mesh Sphere(string name, float radius, int sides = 16, int rings = 10, float fromDeg = 0f, float toDeg = 180f)
+        {
+            var p = new List<Vector2>();
+            for (int k = 0; k <= rings; k++)
+            {
+                float phi = Mathf.Lerp(fromDeg, toDeg, k / (float)rings) * Mathf.Deg2Rad;
+                p.Add(new Vector2(Mathf.Sin(phi) * radius, Mathf.Cos(phi) * radius));
+            }
+            return Lathe(name, p, sides, true);
+        }
+
         static int Mid(List<Vector3> p, Dictionary<long, int> cache, int a, int b)
         {
             long key = a < b ? ((long)a << 32) | (uint)b : ((long)b << 32) | (uint)a;
@@ -91,6 +154,13 @@ namespace JumpGame.EditorTools
 
         static Mesh Save(string name, List<Vector3> verts)
         {
+            var tris = new List<int>(verts.Count);
+            for (int i = 0; i < verts.Count; i++) tris.Add(i);
+            return Save(name, verts, null, tris);
+        }
+
+        static Mesh Save(string name, List<Vector3> verts, List<Vector3> normals, List<int> tris)
+        {
             Directory.CreateDirectory(Dir);
             string path = $"{Dir}/{name}.asset";
 
@@ -100,11 +170,10 @@ namespace JumpGame.EditorTools
             mesh.Clear();
             mesh.name = name;
 
-            var tris = new int[verts.Count];
-            for (int i = 0; i < tris.Length; i++) tris[i] = i;
             mesh.SetVertices(verts);
             mesh.SetTriangles(tris, 0);
-            mesh.RecalculateNormals();
+            if (normals != null) mesh.SetNormals(normals);
+            else mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
             if (isNew) AssetDatabase.CreateAsset(mesh, path);

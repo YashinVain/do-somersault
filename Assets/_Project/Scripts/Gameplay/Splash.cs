@@ -14,22 +14,23 @@ namespace JumpGame
 
         ParticleSystem Drops => drops != null ? drops : drops = GetComponent<ParticleSystem>();
 
+        // 0.3 for a clean entry up to 1.6 for a cannonball.
+        public static float SizeFor(EntryKind entry) => entry switch
+        {
+            EntryKind.HeadClean => 0.3f,
+            EntryKind.FeetClean => 0.45f,
+            EntryKind.Head or EntryKind.Feet => 0.7f,
+            EntryKind.Cannonball => 1.6f,
+            _ => 1.25f
+        };
+
         void Awake()
         {
             if (ripple != null) ripple.gameObject.SetActive(false);
         }
 
-        public void Play(Vector3 point, EntryKind entry)
+        public void Play(Vector3 point, float size)
         {
-            float size = entry switch
-            {
-                EntryKind.HeadClean => 0.3f,
-                EntryKind.FeetClean => 0.45f,
-                EntryKind.Head or EntryKind.Feet => 0.7f,
-                EntryKind.Cannonball => 1.6f,
-                _ => 1.25f
-            };
-
             transform.position = point;
             var main = Drops.main;
             main.startSpeedMultiplier = 2.5f + size * 3.5f;

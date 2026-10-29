@@ -23,7 +23,7 @@ namespace JumpGame.EditorTools
         const float ZoneRadius = 1.3f;
 
         // Meshes
-        static Mesh cube, hex, oct, disc, ball, rough, cone, drop;
+        static Mesh cube, hex, disc, rough, cone, drop;
 
         [MenuItem("Jump Game/Build Prototype Scene")]
         public static void Build()
@@ -61,10 +61,8 @@ namespace JumpGame.EditorTools
             Object.DestroyImmediate(tmp);
 
             hex = LowPolyMeshes.Prism("Hex", 6, 0.5f, 0.5f, 1f);
-            oct = LowPolyMeshes.Prism("Oct", 8, 0.5f, 0.5f, 1f);
-            disc = LowPolyMeshes.Prism("Disc", 20, 0.5f, 0.5f, 0.02f);
+            disc = LowPolyMeshes.Lathe("RippleRing", new[] { new Vector2(0.43f, 0f), new Vector2(0.5f, 0f) }, 32, true);
             cone = LowPolyMeshes.Prism("Cone", 8, 0.5f, 0f, 1f);
-            ball = LowPolyMeshes.Icosphere("Ball", 1, 0.5f);
             rough = LowPolyMeshes.Icosphere("Rough", 1, 0.5f, 0.14f, 7);
             drop = LowPolyMeshes.Icosphere("Drop", 0, 0.5f);
         }
@@ -254,24 +252,47 @@ namespace JumpGame.EditorTools
             var go = new GameObject("LandingZone");
             go.transform.position = ZoneCenter;
 
-            var red = Mat("BuoyRed", "#FF4F5E", smoothness: 0.35f);
-            var white = Mat("BuoyWhite", "#FFFFFF", smoothness: 0.35f);
+            var red = Mat("BuoyRed", "#F2434F", smoothness: 0.45f);
+            var white = Mat("BuoyWhite", "#F7F7F2", smoothness: 0.45f);
 
-            const int count = 14;
-            var buoys = new Transform[count];
+            // Lane-rope float: a spindle threaded on the rope.
+            var floatMesh = LowPolyMeshes.Lathe("RopeFloat", new[]
+            {
+                new Vector2(0.012f, 0.088f), new Vector2(0.036f, 0.082f), new Vector2(0.058f, 0.058f),
+                new Vector2(0.068f, 0.025f), new Vector2(0.07f, 0f), new Vector2(0.068f, -0.025f),
+                new Vector2(0.058f, -0.058f), new Vector2(0.036f, -0.082f), new Vector2(0.012f, -0.088f)
+            }, 12, true);
+
+            const int count = 44;
+            var floats = new Transform[count];
             for (int i = 0; i < count; i++)
             {
                 float a = i / (float)count * Mathf.PI * 2f;
-                var p = new Vector3(Mathf.Cos(a) * ZoneRadius, 0.05f, Mathf.Sin(a) * ZoneRadius);
-                buoys[i] = Put(ball, "Buoy_" + i, go.transform, p, new Vector3(0.26f, 0.2f, 0.26f), i % 2 == 0 ? red : white);
+                var p = new Vector3(Mathf.Cos(a) * ZoneRadius, 0.035f, Mathf.Sin(a) * ZoneRadius);
+                var tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+                floats[i] = Put(floatMesh, "Float_" + i, go.transform, p, Vector3.one, (i / 2) % 2 == 0 ? red : white);
+                floats[i].localRotation = Quaternion.LookRotation(tangent) * Quaternion.Euler(90f, 0f, 0f);
             }
+
+            var ropeGo = new GameObject("Rope");
+            ropeGo.transform.SetParent(go.transform, false);
+            var rope = ropeGo.AddComponent<LineRenderer>();
+            rope.sharedMaterial = Mat("Rope", "#FFFFFF", shader: "Sprites/Default");
+            rope.startColor = rope.endColor = Hex("#39404C");
+            rope.widthMultiplier = 0.018f;
+            rope.loop = true;
+            rope.useWorldSpace = true;
+            rope.shadowCastingMode = ShadowCastingMode.Off;
+            rope.positionCount = count;
+            for (int i = 0; i < count; i++) rope.SetPosition(i, ZoneCenter + floats[i].localPosition);
 
             var zone = go.AddComponent<LandingZone>();
             var so = new SerializedObject(zone);
             so.FindProperty("radius").floatValue = ZoneRadius;
-            var arr = so.FindProperty("buoys");
+            so.FindProperty("rope").objectReferenceValue = rope;
+            var arr = so.FindProperty("floats");
             arr.arraySize = count;
-            for (int i = 0; i < count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = buoys[i];
+            for (int i = 0; i < count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = floats[i];
             so.ApplyModifiedPropertiesWithoutUndo();
             return zone;
         }
@@ -326,58 +347,90 @@ namespace JumpGame.EditorTools
 
         static Diver BuildDiver()
         {
-            var skin = Mat("Skin", "#F2C2A0");
-            var trunks = Mat("Trunks", "#283B8F");
-            var cap = Mat("SwimCap", "#FFC743", smoothness: 0.45f);
-            var goggles = Mat("Goggles", "#1E2A4A", smoothness: 0.7f);
+            var skin = Mat("Skin", "#EFBC98", smoothness: 0.3f);
+            var trunks = Mat("Trunks", "#283B8F", smoothness: 0.3f);
+            var cap = Mat("SwimCap", "#FFC743", smoothness: 0.55f);
+            var strap = Mat("Goggles", "#1E2A4A", smoothness: 0.6f);
+            var lens = Mat("Lens", "#7FD3F0", smoothness: 0.9f);
 
-            var limbArm = LowPolyMeshes.Prism("Limb_Arm", 6, 0.055f, 0.072f, 0.56f, pivotTop: true);
-            var limbThigh = LowPolyMeshes.Prism("Limb_Thigh", 6, 0.085f, 0.105f, 0.45f, pivotTop: true);
-            var limbShin = LowPolyMeshes.Prism("Limb_Shin", 6, 0.065f, 0.085f, 0.45f, pivotTop: true);
-            var torsoMesh = LowPolyMeshes.Prism("Torso", 8, 0.21f, 0.27f, 0.5f);
+            // Smooth rounded body: every joint is covered by the rounded ends of the parts meeting there.
+            var torsoMesh = LowPolyMeshes.Lathe("Body_Torso", new[]
+            {
+                new Vector2(0f, 0.47f), new Vector2(0.07f, 0.465f), new Vector2(0.15f, 0.44f), new Vector2(0.195f, 0.39f),
+                new Vector2(0.205f, 0.31f), new Vector2(0.19f, 0.2f), new Vector2(0.165f, 0.1f), new Vector2(0.16f, 0.02f),
+                new Vector2(0.17f, -0.06f), new Vector2(0.1f, -0.11f), new Vector2(0f, -0.12f)
+            }, 16, true);
+            var trunksMesh = LowPolyMeshes.Lathe("Body_Trunks", new[]
+            {
+                new Vector2(0f, 0.06f), new Vector2(0.172f, 0.06f), new Vector2(0.186f, 0f),
+                new Vector2(0.18f, -0.07f), new Vector2(0.15f, -0.13f), new Vector2(0f, -0.15f)
+            }, 16, true);
+            var head = LowPolyMeshes.Sphere("Body_Head", 0.142f);
+            var capMesh = LowPolyMeshes.Sphere("Body_Cap", 0.151f, 16, 8, 0f, 100f);
+            var band = LowPolyMeshes.Lathe("Body_GoggleBand", new[] { new Vector2(0.144f, 0.02f), new Vector2(0.149f, 0f), new Vector2(0.144f, -0.02f) }, 16, true);
+            var joint = LowPolyMeshes.Sphere("Body_Joint", 0.068f, 12, 8);
+            var lensMesh = LowPolyMeshes.Sphere("Body_Lens", 0.038f, 10, 6);
+            var hand = LowPolyMeshes.Sphere("Body_Hand", 0.052f, 10, 6);
+            var neck = LowPolyMeshes.Capsule("Body_Neck", 0.064f, 0.07f, 0.05f);
+            var upperArm = LowPolyMeshes.Capsule("Body_UpperArm", 0.064f, 0.052f, 0.26f);
+            var foreArm = LowPolyMeshes.Capsule("Body_ForeArm", 0.051f, 0.042f, 0.23f);
+            var thighMesh = LowPolyMeshes.Capsule("Body_Thigh", 0.102f, 0.072f, 0.37f);
+            var shinMesh = LowPolyMeshes.Capsule("Body_Shin", 0.073f, 0.05f, 0.36f);
+            var footMesh = LowPolyMeshes.Capsule("Body_Foot", 0.05f, 0.042f, 0.17f);
 
             var root = new GameObject("Diver");
             root.transform.position = new Vector3(0f, PlatformTop + 0.9f, -0.25f);
 
             var rig = new GameObject("Rig").transform;
             rig.SetParent(root.transform, false);
+            Put(trunksMesh, "Trunks", rig, Vector3.zero, new Vector3(1f, 1f, 0.72f), trunks);
 
-            Put(oct, "Hips", rig, new Vector3(0f, 0.04f, 0f), new Vector3(0.48f, 0.26f, 0.3f), trunks);
+            var spine = Pivot("Spine", rig, new Vector3(0f, 0.1f, 0f));
+            Put(torsoMesh, "Torso", spine, Vector3.zero, new Vector3(1f, 1f, 0.66f), skin);
+            Put(neck, "Neck", spine, new Vector3(0f, 0.52f, 0f), Vector3.one, skin);
 
-            var spine = Pivot("Spine", rig, new Vector3(0f, 0.12f, 0f));
-            Put(torsoMesh, "Torso", spine, new Vector3(0f, 0.25f, 0f), new Vector3(1f, 1f, 0.64f), skin);
-            Put(hex, "Neck", spine, new Vector3(0f, 0.54f, 0f), new Vector3(0.14f, 0.1f, 0.14f), skin);
-            Put(ball, "Head", spine, new Vector3(0f, 0.73f, 0f), Vector3.one * 0.36f, skin);
-            Put(ball, "Cap", spine, new Vector3(0f, 0.765f, -0.006f), new Vector3(0.38f, 0.3f, 0.38f), cap);
-            Box("Goggles", spine, new Vector3(0f, 0.745f, 0.165f), new Vector3(0.27f, 0.055f, 0.05f), goggles);
+            var headPivot = Pivot("Head", spine, new Vector3(0f, 0.63f, 0.01f));
+            Put(head, "Head_Mesh", headPivot, Vector3.zero, new Vector3(0.95f, 1.06f, 1f), skin);
+            var capT = Put(capMesh, "Cap", headPivot, new Vector3(0f, 0.012f, -0.006f), new Vector3(1f, 1.04f, 1.02f), cap);
+            capT.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+            var bandT = Put(band, "GoggleStrap", headPivot, new Vector3(0f, -0.004f, 0f), new Vector3(0.98f, 1f, 1.02f), strap);
+            bandT.localRotation = Quaternion.Euler(-10f, 0f, 0f);
+            foreach (float x in new[] { -0.05f, 0.05f })
+                Put(lensMesh, "Lens", headPivot, new Vector3(x, 0.004f, 0.134f), new Vector3(1.15f, 0.8f, 0.5f), lens);
 
-            Transform Arm(string n, float x)
+            (Transform arm, Transform fore) Arm(string side, float x)
             {
-                var p = Pivot(n, spine, new Vector3(x, 0.47f, 0f));
-                Put(limbArm, n + "_Mesh", p, Vector3.zero, Vector3.one, skin);
-                Put(ball, n + "_Hand", p, new Vector3(0f, -0.59f, 0f), Vector3.one * 0.13f, skin);
-                return p;
+                Put(joint, "Shoulder_" + side, spine, new Vector3(x * 0.93f, 0.4f, 0f), Vector3.one, skin);
+                var arm = Pivot("Arm_" + side, spine, new Vector3(x, 0.4f, 0f));
+                Put(upperArm, "UpperArm_" + side, arm, Vector3.zero, Vector3.one, skin);
+                var fore = Pivot("ForeArm_" + side, arm, new Vector3(0f, -0.27f, 0f));
+                Put(foreArm, "ForeArm_" + side + "_Mesh", fore, Vector3.zero, Vector3.one, skin);
+                Put(hand, "Hand_" + side, fore, new Vector3(0f, -0.29f, 0f), new Vector3(0.9f, 1.3f, 0.6f), skin);
+                return (arm, fore);
             }
-            var armL = Arm("Arm_L", -0.31f);
-            var armR = Arm("Arm_R", 0.31f);
+            var armL = Arm("L", -0.235f);
+            var armR = Arm("R", 0.235f);
 
             (Transform thigh, Transform shin) Leg(string side, float x)
             {
-                var thigh = Pivot("Thigh_" + side, rig, new Vector3(x, 0f, 0f));
-                Put(limbThigh, "Thigh_" + side + "_Mesh", thigh, Vector3.zero, Vector3.one, skin);
-                var shin = Pivot("Shin_" + side, thigh, new Vector3(0f, -0.45f, 0f));
-                Put(limbShin, "Shin_" + side + "_Mesh", shin, Vector3.zero, Vector3.one, skin);
-                Box("Foot_" + side, shin, new Vector3(0f, -0.47f, 0.06f), new Vector3(0.12f, 0.07f, 0.25f), skin);
+                var thigh = Pivot("Thigh_" + side, rig, new Vector3(x, 0.02f, 0f));
+                Put(thighMesh, "Thigh_" + side + "_Mesh", thigh, Vector3.zero, Vector3.one, skin);
+                var shin = Pivot("Shin_" + side, thigh, new Vector3(0f, -0.44f, 0f));
+                Put(shinMesh, "Shin_" + side + "_Mesh", shin, Vector3.zero, Vector3.one, skin);
+                var foot = Put(footMesh, "Foot_" + side, shin, new Vector3(0f, -0.425f, -0.05f), Vector3.one, skin);
+                foot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
                 return (thigh, shin);
             }
-            var legL = Leg("L", -0.12f);
-            var legR = Leg("R", 0.12f);
+            var legL = Leg("L", -0.1f);
+            var legR = Leg("R", 0.1f);
 
             var pose = root.AddComponent<DiverPose>();
             Link(pose, "rig", rig);
             Link(pose, "spine", spine);
-            Link(pose, "armL", armL);
-            Link(pose, "armR", armR);
+            Link(pose, "armL", armL.arm);
+            Link(pose, "armR", armR.arm);
+            Link(pose, "foreL", armL.fore);
+            Link(pose, "foreR", armR.fore);
             Link(pose, "thighL", legL.thigh);
             Link(pose, "thighR", legR.thigh);
             Link(pose, "kneeL", legL.shin);
