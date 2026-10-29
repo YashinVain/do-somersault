@@ -32,14 +32,22 @@ namespace JumpGame
 
         void Awake() => Hide();
 
+        bool Ready => crown != null && jet != null && bubbles != null && foam != null && ripples != null;
+
         void Hide()
         {
+            if (!Ready)
+            {
+                Debug.LogWarning("Splash is not wired up; rebuild the scene with Jump Game > Build Prototype Scene.", this);
+                return;
+            }
             foam.enabled = false;
             foreach (var r in ripples) r.enabled = false;
         }
 
         public void Play(Vector3 point, float splashSize)
         {
+            if (!Ready) return;
             size = splashSize;
             age = 0f;
             transform.position = point;
@@ -73,6 +81,7 @@ namespace JumpGame
         // Also called by editor tools, which have to advance the particles by hand.
         public void Step(float dt)
         {
+            if (!Ready) return;
             if (!Application.isPlaying && dt > 0f)
             {
                 crown.Simulate(dt, true, false, false);

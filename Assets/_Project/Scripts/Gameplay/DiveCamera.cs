@@ -19,12 +19,17 @@ namespace JumpGame
         [Tooltip("Where the framing centre sits between the diver (0) and the ring (1).")]
         [SerializeField, Range(0f, 1f)] float focusBias = 0.5f;
         [SerializeField] float followSharpness = 3.5f;
-        [SerializeField] float minHeight = 1.2f;
+        [SerializeField] float minHeight = 2.4f;
 
         Camera cam;
         Vector3 focus;
         float distance;
         readonly Vector3[] points = new Vector3[6];
+
+        float shake;
+
+        // A short jolt that dies out in about half a second.
+        public void Shake(float strength) => shake = Mathf.Max(shake, strength);
 
         // +1 films from the -X side of the pool, -1 from the +X side.
         public void SetSide(float sign) => viewDirection.x = Mathf.Abs(viewDirection.x) * Mathf.Sign(sign);
@@ -76,7 +81,8 @@ namespace JumpGame
             float tanDown = tanHalf * fill;
             float tanUp = tanHalf * (fill - topReserve);
             float tanSide = tanDown * cam.aspect;
-            d = minDistance;
+            // After the entry the shot stays wide enough to keep the camera clear of the pool edge.
+            d = diver.Current == Diver.State.Underwater ? minDistance * 1.5f : minDistance;
             foreach (var p in points)
             {
                 Vector3 rel = p - f;
@@ -94,6 +100,14 @@ namespace JumpGame
             pos.y = Mathf.Max(pos.y, minHeight);
             transform.position = pos;
             transform.LookAt(focus);
+
+            if (shake > 0.001f)
+            {
+                float t = Time.unscaledTime * 31f;
+                var jolt = new Vector3(Mathf.PerlinNoise(t, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, t) - 0.5f, 0f) * shake;
+                transform.position += transform.rotation * jolt;
+                shake = Mathf.MoveTowards(shake, 0f, Time.unscaledDeltaTime * 0.8f);
+            }
         }
     }
 }

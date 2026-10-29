@@ -56,6 +56,61 @@ namespace JumpGame.EditorTools
             Capture();
         }
 
+        public static void BuildAndMeasure()
+        {
+            PrototypeSceneBuilder.Build();
+            MeasureJumps();
+            Capture();
+        }
+
+        public static void MeasureJumps()
+        {
+            Open();
+            foreach (int level in new[] { 0, 2, 6 })
+            {
+                flow.Load(level);
+                diver.ResetToStart();
+                diver.Step(Dt, false);
+
+                var pose = diver.GetComponent<DiverPose>();
+                var parts = new[] { "Spine/Head", "Spine", "Thigh_L/Shin_L/Ankle_L/Foot_L" };
+                var rig = diver.transform.Find("Rig");
+                var prev = new Vector3[parts.Length];
+                var sb = new StringBuilder($"JUMPS level {level + 1}\n");
+                var worst = new System.Collections.Generic.List<(float jump, string line)>();
+
+                var tower = UnityEngine.Object.FindAnyObjectByType<DivingTower>();
+                var contacts = new Vector3[DiverPose.ContactCount];
+                for (float t = 0f; t < 3f; t += Dt)
+                {
+                    var state = diver.Current;
+                    if (state == Diver.State.Crouching || (state == Diver.State.Airborne && t < 1.5f))
+                    {
+                        pose.ContactPoints(contacts);
+                        for (int c = 0; c < contacts.Length; c++)
+                            if (tower.Penetration(contacts[c], out var n, out float depth) && depth > 0.01f)
+                                sb.Append($"  t={t:0.000} {state} contact {c} inside tower by {depth * 100f:0.0} cm, normal {n}\n");
+                    }
+                    diver.Step(Dt, true);
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        var p = rig.Find(parts[i]).position;
+                        if (t > 0f)
+                        {
+                            float d = (p - prev[i]).magnitude;
+                            worst.Add((d, $"  t={t:0.000} {state}->{diver.Current} {parts[i]} moved {d * 100f:0.0} cm"));
+                        }
+                        prev[i] = p;
+                    }
+                    if (diver.Current == Diver.State.Underwater) break;
+                }
+
+                worst.Sort((a, b) => b.jump.CompareTo(a.jump));
+                for (int i = 0; i < 8 && i < worst.Count; i++) sb.Append(worst[i].line).Append('\n');
+                Debug.Log(sb.ToString());
+            }
+        }
+
         [MenuItem("Jump Game/Tune Level Medals")]
         public static void Tune()
         {

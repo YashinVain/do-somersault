@@ -27,6 +27,8 @@ namespace JumpGame
         [SerializeField] Text resultDetails;
         [SerializeField] Text resultScore;
         [SerializeField] Image[] resultMedals;
+        [SerializeField] RectTransform[] judgeCards;
+        [SerializeField] Text[] judgeTexts;
         [SerializeField] Text resultTask;
         [SerializeField] Button retryButton, nextLevelButton;
         [SerializeField] float resultDelay = 0.9f;
@@ -47,6 +49,7 @@ namespace JumpGame
         float finishedAt = -1f;
         DiveOutcome outcome;
         bool firstDive = true;
+        int dives;
 
         void OnEnable()
         {
@@ -155,6 +158,7 @@ namespace JumpGame
             float k = Mathf.Clamp01((t - resultDelay) / 0.25f);
             float s = 1f + Mathf.Sin(k * Mathf.PI) * 0.08f;
             resultPanel.localScale = new Vector3(s, s, 1f);
+            AnimateJudges(t - resultDelay);
 
             // Tapping anywhere outside the buttons is a quick retry.
             if (t > resultDelay + 0.3f && diver.AcceptInput && HoldInput.IsHeld)
@@ -187,12 +191,34 @@ namespace JumpGame
             for (int i = 0; i < 3; i++)
                 resultMedals[i].color = Fade(MedalColors[i], i < outcome.stars ? 1f : Dim);
 
+            var scores = JudgePanel.Score(r, ++dives * 7919 + r.score);
+            for (int i = 0; i < judgeTexts.Length; i++)
+            {
+                judgeTexts[i].text = JudgePanel.Format(scores[i]);
+                judgeTexts[i].color = scores[i] >= 8f ? new Color(0.13f, 0.5f, 0.32f)
+                                    : scores[i] < 3f ? new Color(0.75f, 0.2f, 0.2f)
+                                    : new Color(0.12f, 0.15f, 0.25f);
+            }
+            AnimateJudges(0f);
+
             if (outcome.taskJustDone) resultTask.text = "Задание выполнено!";
             else if (outcome.taskDone) resultTask.text = "Задание снова выполнено";
             else resultTask.text = "Задание: " + flow.Level.TaskText;
             resultTask.color = outcome.taskDone ? TaskDone : new Color(1f, 1f, 1f, 0.75f);
 
             nextLevelButton.gameObject.SetActive(flow.CanGoNext);
+        }
+
+        // Cards go up one after another, each with a small overshoot.
+        void AnimateJudges(float t)
+        {
+            for (int i = 0; i < judgeCards.Length; i++)
+            {
+                float x = Mathf.Clamp01((t - 0.25f - i * 0.18f) / 0.3f) - 1f;
+                const float c1 = 1.70158f, c3 = c1 + 1f;
+                float s = 1f + c3 * x * x * x + c1 * x * x; // ease-out-back
+                judgeCards[i].localScale = new Vector3(s, s, 1f);
+            }
         }
 
         // For the editor capture tool, which renders the HUD without entering play mode.
@@ -207,6 +233,7 @@ namespace JumpGame
                 outcome = result.Value;
                 SetHint("");
                 ShowResult();
+                AnimateJudges(5f);
             }
             else
             {

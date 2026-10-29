@@ -35,12 +35,20 @@ namespace JumpGame
         {
             diver.TurnCompleted += Show;
             diver.Restarted += Clear;
+            diver.Entered += FadeOut;
         }
 
         void OnDisable()
         {
             diver.TurnCompleted -= Show;
             diver.Restarted -= Clear;
+            diver.Entered -= FadeOut;
+        }
+
+        // The result screen is about to come up: let whatever is still floating fade now.
+        void FadeOut(DiveResult _)
+        {
+            foreach (var p in active) p.age = Mathf.Max(p.age, life * 0.66f);
         }
 
         public void Show(int turns)

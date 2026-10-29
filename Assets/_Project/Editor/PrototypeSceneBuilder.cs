@@ -64,6 +64,10 @@ namespace JumpGame.EditorTools
             Link(flow, "zone", zone);
             Link(flow, "cam", cam);
 
+            var juice = flow.gameObject.AddComponent<DiveJuice>();
+            Link(juice, "diver", diver);
+            Link(juice, "view", cam);
+
             BuildHud(diver, flow);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -585,15 +589,16 @@ namespace JumpGame.EditorTools
             var armL = Arm("L", -0.235f);
             var armR = Arm("R", 0.235f);
 
-            (Transform thigh, Transform shin) Leg(string side, float x)
+            (Transform thigh, Transform shin, Transform ankle) Leg(string side, float x)
             {
                 var thigh = Pivot("Thigh_" + side, rig, new Vector3(x, 0.02f, 0f));
                 Put(thighMesh, "Thigh_" + side + "_Mesh", thigh, Vector3.zero, Vector3.one, skin);
                 var shin = Pivot("Shin_" + side, thigh, new Vector3(0f, -0.44f, 0f));
                 Put(shinMesh, "Shin_" + side + "_Mesh", shin, Vector3.zero, Vector3.one, skin);
-                var foot = Put(footMesh, "Foot_" + side, shin, new Vector3(0f, -0.425f, -0.05f), Vector3.one, skin);
+                var ankle = Pivot("Ankle_" + side, shin, new Vector3(0f, -0.425f, 0f));
+                var foot = Put(footMesh, "Foot_" + side, ankle, new Vector3(0f, 0f, -0.05f), Vector3.one, skin);
                 foot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
-                return (thigh, shin);
+                return (thigh, shin, ankle);
             }
             var legL = Leg("L", -0.1f);
             var legR = Leg("R", 0.1f);
@@ -609,6 +614,8 @@ namespace JumpGame.EditorTools
             Link(pose, "thighR", legR.thigh);
             Link(pose, "kneeL", legL.shin);
             Link(pose, "kneeR", legR.shin);
+            Link(pose, "ankleL", legL.ankle);
+            Link(pose, "ankleR", legR.ankle);
 
             var diver = root.AddComponent<Diver>();
             Link(diver, "pose", pose);
@@ -767,21 +774,43 @@ namespace JumpGame.EditorTools
             panel.anchorMin = new Vector2(0f, 0.5f);
             panel.anchorMax = new Vector2(1f, 0.5f);
             panel.pivot = center;
-            panel.sizeDelta = new Vector2(0f, 500f);
+            panel.sizeDelta = new Vector2(0f, 520f);
             panel.anchoredPosition = new Vector2(0f, 0f);
             var band = panelGo.AddComponent<Image>();
             band.color = new Color(0.1f, 0.14f, 0.26f, 0.45f);
             band.raycastTarget = false;
 
-            var title = Label("Title", panel, center, new Vector2(0f, 185f), new Vector2(1000f, 90f), 66, TextAnchor.MiddleCenter);
-            var details = Label("Details", panel, center, new Vector2(0f, 120f), new Vector2(1000f, 50f), 30, TextAnchor.MiddleCenter, FontStyle.Normal);
-            var score = Label("Score", panel, center, new Vector2(0f, 40f), new Vector2(1000f, 120f), 100, TextAnchor.MiddleCenter);
+            var title = Label("Title", panel, center, new Vector2(0f, 205f), new Vector2(1000f, 80f), 62, TextAnchor.MiddleCenter);
+            var details = Label("Details", panel, center, new Vector2(0f, 148f), new Vector2(1000f, 44f), 28, TextAnchor.MiddleCenter, FontStyle.Normal);
+            var score = Label("Score", panel, center, new Vector2(0f, 78f), new Vector2(1000f, 110f), 92, TextAnchor.MiddleCenter);
+
+            // Medals on the left, the judges' cards on the right.
             var medals = new Image[3];
             for (int i = 0; i < 3; i++)
-                medals[i] = Dot("Medal_" + i, panel, center, new Vector2((i - 1) * 74f, -50f), 54f);
-            var task = Label("Task", panel, center, new Vector2(0f, -110f), new Vector2(1000f, 40f), 28, TextAnchor.MiddleCenter);
-            var retry = Btn("Retry", panel, center, new Vector2(-130f, -185f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
-            var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -185f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);
+                medals[i] = Dot("Medal_" + i, panel, center, new Vector2(-250f + i * 62f, -2f), 48f);
+            var judgesLabel = Label("JudgesLabel", panel, center, new Vector2(185f, 42f), new Vector2(300f, 30f), 20, TextAnchor.MiddleCenter, FontStyle.Normal);
+            judgesLabel.text = "оценки судей";
+            var cards = new RectTransform[3];
+            var cardTexts = new Text[3];
+            for (int i = 0; i < 3; i++)
+            {
+                cards[i] = Rect("Judge_" + i, panel, center, new Vector2(95f + i * 90f, -2f), new Vector2(76f, 58f));
+                var bg = cards[i].gameObject.AddComponent<Image>();
+                bg.sprite = pill;
+                bg.type = Image.Type.Sliced;
+                bg.color = Hex("#FBF8F0");
+                bg.raycastTarget = false;
+                var sh = cards[i].gameObject.AddComponent<Shadow>();
+                sh.effectColor = new Color(0.1f, 0.13f, 0.25f, 0.45f);
+                sh.effectDistance = new Vector2(0f, -4f);
+                cardTexts[i] = Label("Value", cards[i], center, Vector2.zero, new Vector2(76f, 58f), 30, TextAnchor.MiddleCenter);
+                Object.DestroyImmediate(cardTexts[i].GetComponent<Outline>());
+                Object.DestroyImmediate(cardTexts[i].GetComponent<Shadow>());
+            }
+
+            var task = Label("Task", panel, center, new Vector2(0f, -72f), new Vector2(1000f, 40f), 26, TextAnchor.MiddleCenter);
+            var retry = Btn("Retry", panel, center, new Vector2(-130f, -150f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
+            var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -150f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);
 
             var hud = canvasGo.AddComponent<DiveHud>();
             Link(hud, "diver", diver);
@@ -801,6 +830,8 @@ namespace JumpGame.EditorTools
             Link(hud, "resultDetails", details);
             Link(hud, "resultScore", score);
             LinkArray(hud, "resultMedals", medals);
+            LinkArray(hud, "judgeCards", cards);
+            LinkArray(hud, "judgeTexts", cardTexts);
             Link(hud, "resultTask", task);
             Link(hud, "retryButton", retry);
             Link(hud, "nextLevelButton", nextLevel);

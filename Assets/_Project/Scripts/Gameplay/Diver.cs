@@ -15,7 +15,6 @@ namespace JumpGame
         [Tooltip("How strongly the lean feeds itself, like a falling pole.")]
         [SerializeField] float tipGain = 320f;
         [SerializeField] float fallAngle = 50f;
-        [SerializeField] Vector3 toeOffset = new Vector3(0f, -0.9f, 0.14f);
 
         [Header("Takeoff")]
         [SerializeField] Vector2 upSpeed = new Vector2(2.6f, 5.2f);
@@ -41,6 +40,8 @@ namespace JumpGame
         [SerializeField] float restTime = 0.8f;
         [Tooltip("Velocity change, m/s, that counts as a real knock rather than the toes brushing the edge.")]
         [SerializeField] float knockImpulse = 0.8f;
+        [Tooltip("Fastest the body is pushed back out of the tower, m/s. Keeps any overlap from snapping.")]
+        [SerializeField] float pushOutSpeed = 2.5f;
 
         [Header("Links")]
         [SerializeField] DiverPose pose;
@@ -65,6 +66,8 @@ namespace JumpGame
         public event Action Restarted;
         // Number of full somersaults done so far in this dive.
         public event Action<int> TurnCompleted;
+        // A real knock against the tower, with its strength in m/s.
+        public event Action<float> Knocked;
 
         int turnsAnnounced;
 
@@ -73,6 +76,7 @@ namespace JumpGame
 
         // Flight is integrated for the centre of mass; the body is placed around it.
         Vector3 com, prevCom, velocity;
+        Vector3 toePivot;
         float angularMomentum;
         float straightInertia = 1f;
         float tuck;
@@ -130,6 +134,7 @@ namespace JumpGame
             Current = State.Crouching;
             holdTime = lean = leanVel = 0f;
             Charge = 0f;
+            toePivot = transform.TransformPoint(pose.LocalToes());
             prevCom = WorldCom();
         }
 
@@ -157,11 +162,11 @@ namespace JumpGame
                 TakeOff();
         }
 
+        // The real toe tips stay where they first stood, whatever the crouch does to the legs.
         void PivotOnToes()
         {
-            Vector3 toe = startPosition + startRotation * toeOffset;
             Quaternion r = startRotation * Quaternion.Euler(Rotation, 0f, 0f);
-            transform.SetPositionAndRotation(toe + r * -toeOffset, r);
+            transform.SetPositionAndRotation(toePivot - r * pose.LocalToes(), r);
         }
 
         void TakeOff()
@@ -255,7 +260,7 @@ namespace JumpGame
             {
                 if (!tower.Penetration(p, out var n, out float depth)) continue;
                 touching = true;
-                com += n * depth;
+                com += n * Mathf.Min(depth, pushOutSpeed * dt);
 
                 // Velocity of this point: the centre of mass plus the spin around the somersault (x) axis.
                 Vector3 r = p - com;
@@ -280,7 +285,11 @@ namespace JumpGame
                     omega += jt * at / inertia;
                 }
 
-                if (j > knockImpulse) hitTower = true;
+                if (j > knockImpulse)
+                {
+                    hitTower = true;
+                    Knocked?.Invoke(j);
+                }
             }
 
             if (!touching)

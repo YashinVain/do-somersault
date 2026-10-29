@@ -11,27 +11,29 @@ namespace JumpGame
         [SerializeField] Transform foreL, foreR;
         [SerializeField] Transform thighL, thighR;
         [SerializeField] Transform kneeL, kneeR;
+        [SerializeField] Transform ankleL, ankleR;
         [SerializeField] float thighLength = 0.44f;
         [SerializeField] float shinLength = 0.43f;
 
         // Angles in degrees. arm: 0 = hanging, 90 = forward, 180 = overhead. elbow: positive bends the forearm forward.
-        // thigh: negative lifts the knee. knee: positive bends the shin back.
+        // thigh: negative lifts the knee. knee: positive bends the shin back. ankle: positive points the toes down the shin.
         struct Pose
         {
-            public float arm, elbow, spine, thigh, knee;
-            public Pose(float arm, float elbow, float spine, float thigh, float knee)
+            public float arm, elbow, spine, thigh, knee, ankle;
+            public Pose(float arm, float elbow, float spine, float thigh, float knee, float ankle)
             {
-                this.arm = arm; this.elbow = elbow; this.spine = spine; this.thigh = thigh; this.knee = knee;
+                this.arm = arm; this.elbow = elbow; this.spine = spine; this.thigh = thigh; this.knee = knee; this.ankle = ankle;
             }
         }
 
-        static readonly Pose Stand = new Pose(4f, 10f, 0f, 0f, 0f);
-        static readonly Pose Crouch = new Pose(-40f, 20f, 30f, -80f, 120f);
-        static readonly Pose Reach = new Pose(172f, 4f, -6f, 0f, 4f);
-        static readonly Pose Tuck = new Pose(28f, 75f, 40f, -128f, 150f);
-        static readonly Pose Pike = new Pose(95f, 8f, 12f, -12f, 6f);
-        static readonly Pose Streamline = new Pose(179f, 0f, 0f, 0f, 0f);
-        static readonly Pose Float = new Pose(150f, 20f, 6f, -8f, 20f);
+        // On the platform the ankle is solved to keep the sole flat, so the ankle value there is ignored.
+        static readonly Pose Stand = new Pose(4f, 10f, 0f, 0f, 0f, 0f);
+        static readonly Pose Crouch = new Pose(-40f, 20f, 30f, -80f, 120f, 0f);
+        static readonly Pose Reach = new Pose(172f, 4f, -6f, 0f, 4f, 70f);
+        static readonly Pose Tuck = new Pose(28f, 75f, 40f, -128f, 150f, 55f);
+        static readonly Pose Pike = new Pose(95f, 8f, 12f, -12f, 6f, 70f);
+        static readonly Pose Streamline = new Pose(179f, 0f, 0f, 0f, 0f, 80f);
+        static readonly Pose Float = new Pose(150f, 20f, 6f, -8f, 20f, 35f);
 
         public float Crouched { get; set; }
         public float Tucked { get; set; }
@@ -42,8 +44,8 @@ namespace JumpGame
         // Fell off the edge while still holding: the crouch curls up instead of opening.
         public bool Slipping { get; set; }
 
-        float arm, elbow, spineBend, thigh, knee;
-        float armVel, elbowVel, spineVel, thighVel, kneeVel;
+        float arm, elbow, spineBend, thigh, knee, ankle;
+        float armVel, elbowVel, spineVel, thighVel, kneeVel, ankleVel;
         float airTime, idleTime;
 
         public void Step(float dt)
@@ -71,6 +73,7 @@ namespace JumpGame
                 Pose open = Slipping ? Crouch
                     : JustLaunched && airTime < 0.25f ? Reach
                     : HeadFirst ? Streamline : Pike;
+                if (Slipping) open.ankle = Tuck.ankle;
                 target = Lerp(open, Tuck, Tucked);
             }
 
@@ -80,8 +83,19 @@ namespace JumpGame
             thigh = Mathf.SmoothDamp(thigh, target.thigh, ref thighVel, 0.07f / speed, Mathf.Infinity, dt);
             knee = Mathf.SmoothDamp(knee, target.knee, ref kneeVel, 0.09f / speed, Mathf.Infinity, dt);
 
+            if (Airborne || Underwater)
+                ankle = Mathf.SmoothDamp(ankle, target.ankle, ref ankleVel, 0.12f / speed, Mathf.Infinity, dt);
+            else
+            {
+                ankle = FlatAnkle();
+                ankleVel = 0f;
+            }
+
             Apply();
         }
+
+        // Cancels the shin's tilt so the sole stays level with the platform.
+        float FlatAnkle() => -(thigh + knee);
 
         void Apply()
         {
@@ -91,6 +105,7 @@ namespace JumpGame
             spine.localRotation = Quaternion.Euler(spineBend, 0f, 0f);
             thighL.localRotation = thighR.localRotation = Quaternion.Euler(thigh, 0f, 0f);
             kneeL.localRotation = kneeR.localRotation = Quaternion.Euler(knee, 0f, 0f);
+            ankleL.localRotation = ankleR.localRotation = Quaternion.Euler(ankle, 0f, 0f);
 
             // On the platform the feet stay planted, so the hips sink as the legs fold.
             float drop = 0f;
@@ -103,8 +118,14 @@ namespace JumpGame
             rig.localPosition = new Vector3(0f, -drop, 0f);
         }
 
-        // Segment centres and masses (fractions of body mass). Positions are in the diver's local space.
+        // Foot points in ankle space: the sole sits 3 cm below the ankle joint.
+        static readonly Vector3 Toe = new Vector3(0f, -0.03f, 0.16f);
+        static readonly Vector3 Heel = new Vector3(0f, -0.03f, -0.08f);
+
         Vector3 Local(Transform t, Vector3 p) => transform.InverseTransformPoint(t.TransformPoint(p));
+
+        // Middle of both toe tips in the diver's local space: the point the body tips over on the edge.
+        public Vector3 LocalToes() => (Local(ankleL, Toe) + Local(ankleR, Toe)) * 0.5f;
 
         public Vector3 LocalCenterOfMass()
         {
@@ -130,6 +151,7 @@ namespace JumpGame
 
         delegate void MassVisitor(Vector3 localPos, float mass);
 
+        // Segment centres and masses (fractions of body mass).
         void ForEachMass(MassVisitor visit)
         {
             visit(Local(rig, Vector3.zero), 0.12f);
@@ -157,16 +179,17 @@ namespace JumpGame
             Check(foreR, Vector3.zero);
             Check(foreL, new Vector3(0f, -0.34f, 0f));
             Check(foreR, new Vector3(0f, -0.34f, 0f));
-            foreach (var k in new[] { kneeL, kneeR })
+            Check(kneeL, Vector3.zero);
+            Check(kneeR, Vector3.zero);
+            foreach (var a in new[] { ankleL, ankleR })
             {
-                Check(k, Vector3.zero);
-                Check(k, new Vector3(0f, -0.47f, 0.15f));
-                Check(k, new Vector3(0f, -0.47f, -0.08f));
+                Check(a, Toe);
+                Check(a, Heel);
             }
             return y;
         }
 
-        // Points used for contact with floating objects.
+        // Points used for contact with the tower and the floats.
         public void ContactPoints(Vector3[] into)
         {
             into[0] = spine.TransformPoint(new Vector3(0f, 0.63f, 0f));
@@ -176,10 +199,10 @@ namespace JumpGame
             into[4] = foreR.TransformPoint(new Vector3(0f, -0.3f, 0f));
             into[5] = kneeL.position;
             into[6] = kneeR.position;
-            into[7] = kneeL.TransformPoint(new Vector3(0f, -0.47f, 0.15f));
-            into[8] = kneeR.TransformPoint(new Vector3(0f, -0.47f, 0.15f));
-            into[9] = kneeL.TransformPoint(new Vector3(0f, -0.47f, -0.08f));
-            into[10] = kneeR.TransformPoint(new Vector3(0f, -0.47f, -0.08f));
+            into[7] = ankleL.TransformPoint(Toe);
+            into[8] = ankleR.TransformPoint(Toe);
+            into[9] = ankleL.TransformPoint(Heel);
+            into[10] = ankleR.TransformPoint(Heel);
             into[11] = spine.TransformPoint(new Vector3(0f, 0.79f, 0f));
             into[12] = foreL.position;
             into[13] = foreR.position;
@@ -194,8 +217,8 @@ namespace JumpGame
             airTime = 0f;
             arm = Stand.arm;
             elbow = Stand.elbow;
-            spineBend = thigh = knee = 0f;
-            armVel = elbowVel = spineVel = thighVel = kneeVel = 0f;
+            spineBend = thigh = knee = ankle = 0f;
+            armVel = elbowVel = spineVel = thighVel = kneeVel = ankleVel = 0f;
             Apply();
         }
 
@@ -204,6 +227,7 @@ namespace JumpGame
             Mathf.Lerp(a.elbow, b.elbow, t),
             Mathf.Lerp(a.spine, b.spine, t),
             Mathf.Lerp(a.thigh, b.thigh, t),
-            Mathf.Lerp(a.knee, b.knee, t));
+            Mathf.Lerp(a.knee, b.knee, t),
+            Mathf.Lerp(a.ankle, b.ankle, t));
     }
 }
