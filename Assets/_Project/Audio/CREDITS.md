@@ -11,3 +11,5 @@
 
 Лицензия CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
 | Water (peludo_splash) | Water Splash and sand footsteps | Peludo | https://opengameart.org/content/water-splash-and-sand-footsteps |
+| Sfx100 (bell, noise, paper) | 100 CC0 SFX | rubberduck | https://opengameart.org/content/100-cc0-sfx |
+| Sfx100 (sfx100v2_*) | 100 CC0 SFX #2 | rubberduck | https://opengameart.org/content/100-cc0-sfx-2 |
