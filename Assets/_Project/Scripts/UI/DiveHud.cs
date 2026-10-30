@@ -33,6 +33,7 @@ namespace JumpGame
         [SerializeField] Text resultCoins;
         [SerializeField] Text coinCounter;
         [SerializeField] Button restartButton;
+        [SerializeField] Button doubleCoinsButton;
         [SerializeField] Button retryButton, nextLevelButton;
         [SerializeField] float resultDelay = 0.9f;
 
@@ -76,6 +77,7 @@ namespace JumpGame
             nextButton.onClick.AddListener(flow.Next);
             retryButton.onClick.AddListener(flow.Retry);
             restartButton.onClick.AddListener(flow.Retry);
+            doubleCoinsButton.onClick.AddListener(DoubleCoins);
             nextLevelButton.onClick.AddListener(OnNextPressed);
             resultPanel.gameObject.SetActive(false);
             RefreshLevel();
@@ -109,6 +111,24 @@ namespace JumpGame
         void RefreshCoins()
         {
             if (coinCounter != null && flow.Saved != null) coinCounter.text = flow.Coins.ToString();
+        }
+
+        // The same coins once more for a video, once per dive.
+        void DoubleCoins()
+        {
+            int bonus = outcome.coins;
+            bool paid = false;
+            doubleCoinsButton.gameObject.SetActive(false);
+            YandexGames.ShowRewarded(() =>
+            {
+                paid = true;
+                flow.AddCoins(bonus);
+                resultCoins.text = "+" + bonus * 2 + " монет";
+                Sounds.Play(Cue.Coins);
+            }, () =>
+            {
+                if (!paid && outcome.coins > 0 && resultPanel.gameObject.activeSelf) doubleCoinsButton.gameObject.SetActive(true);
+            });
         }
 
         // "Дальше" goes to the next dive; after the last one of a location it opens the summary instead.
@@ -146,7 +166,7 @@ namespace JumpGame
             switch (diver.Current)
             {
                 case Diver.State.Ready:
-                    SetHint("Зажми, чтобы присесть и наклониться.\nОтпусти — прыжок!");
+                    SetHint("Зажми — присядь и наклонись, отпусти — прыжок.\nКороткое нажатие — сильный толчок вперёд.");
                     turns.enabled = false;
                     break;
 
@@ -155,6 +175,14 @@ namespace JumpGame
                     break;
 
                 case Diver.State.Airborne:
+                    if (diver.Stranded)
+                    {
+                        // Landed on something that is not water: a countdown to hop off, or start over.
+                        turns.enabled = true;
+                        turns.text = Mathf.Max(0f, diver.StrandedLeft).ToString("0.0").Replace('.', ',');
+                        SetHint("Застрял! Нажми, чтобы выпрыгнуть,\nили «Заново»");
+                        break;
+                    }
                     turns.enabled = !diver.Slipped;
                     turns.text = (Mathf.Max(0f, diver.Rotation) / 360f).ToString("0.0").Replace('.', ',');
                     SetHint(firstDive && !diver.Slipped ? "Держи — группировка, отпусти — раскрыться" : "");
@@ -233,6 +261,7 @@ namespace JumpGame
             string coinsLine = outcome.coins > 0 ? "+" + outcome.coins + " монет" : "";
             if (!string.IsNullOrEmpty(r.note)) coinsLine += (coinsLine.Length > 0 ? "   ·   " : "") + r.note;
             resultCoins.text = coinsLine;
+            doubleCoinsButton.gameObject.SetActive(outcome.coins > 0);
 
             bool summary = !flow.CanGoNext && flow.AtLocationEnd && flow.Saved.stars[flow.Index] > 0;
             nextLevelButton.gameObject.SetActive(flow.CanGoNext || summary);
@@ -268,7 +297,7 @@ namespace JumpGame
             }
             else
             {
-                SetHint("Зажми, чтобы присесть и наклониться.\nОтпусти — прыжок!");
+                SetHint("Зажми — присядь и наклонись, отпусти — прыжок.\nКороткое нажатие — сильный толчок вперёд.");
             }
         }
 

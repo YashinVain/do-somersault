@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <!-- The platform script: gives the game ads, cloud saves and the leaderboard. Without it the game runs offline. -->
+  <script src="https://yandex.ru/games/sdk/v2"></script>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d1520; }
+    #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #0d1520; }
+    #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+              color: #f4f1ea; font-family: Arial, sans-serif; background: #0d1520; transition: opacity .4s; }
+    #loader h1 { margin: 0 0 22px; font-size: 54px; letter-spacing: 2px; }
+    #loader .track { width: min(70vw, 420px); height: 6px; background: #223044; border-radius: 3px; overflow: hidden; }
+    #loader .fill { width: 0; height: 100%; background: #ee6a55; }
+  </style>
+</head>
+<body>
+  <canvas id="unity-canvas" tabindex="-1"></canvas>
+  <div id="loader">
+    <h1>НЫРЯЙ</h1>
+    <div class="track"><div class="fill" id="fill"></div></div>
+  </div>
+
+  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+  <script>
+    var config = {
+      dataUrl: "Build/{{{ DATA_FILENAME }}}",
+      frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+      codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}}
+    };
+
+    // The page keeps a handle on the game for the Yandex bridge (SendMessage from JavaScript).
+    createUnityInstance(document.querySelector("#unity-canvas"), config, function (progress) {
+      document.getElementById("fill").style.width = (progress * 100) + "%";
+    }).then(function (instance) {
+      window.unityGame = instance;
+      var loader = document.getElementById("loader");
+      loader.style.opacity = 0;
+      setTimeout(function () { loader.style.display = "none"; }, 450);
+    }).catch(function (message) {
+      document.getElementById("loader").innerText = message;
+    });
+  </script>
+</body>
+</html>

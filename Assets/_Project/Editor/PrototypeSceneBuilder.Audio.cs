@@ -50,7 +50,7 @@ namespace JumpGame.EditorTools
                 (Cue.Close, Clips("Interface", "close_001", "minimize_001"), 0.6f, 1f, 1f),
                 (Cue.Whoosh, Clips("Effects", "cloth1", "cloth2", "cloth3", "cloth4"), 0.6f, 0.75f, 0.9f),
                 (Cue.Coins, Clips("Effects", "handleCoins", "handleCoins2"), 0.8f, 0.98f, 1.04f),
-                (Cue.Knock, Clips("Effects", "metalPot1", "metalPot2", "metalPot3", "metalClick"), 0.7f, 0.9f, 1.1f),
+                (Cue.Knock, Clips("Effects", "dropLeather", "footstep00", "footstep01"), 0.7f, 0.8f, 0.95f),
                 (Cue.Step, Clips("Effects", "footstep00", "footstep01", "footstep02", "footstep03"), 0.7f, 0.95f, 1.05f),
                 (Cue.Creak, Clips("Effects", "creak1", "creak2", "creak3"), 0.6f, 0.9f, 1.1f),
                 (Cue.Tuck, Clips("Effects", "cloth1", "cloth2", "cloth3", "cloth4"), 0.45f, 1f, 1.15f),

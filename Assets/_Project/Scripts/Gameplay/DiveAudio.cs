@@ -12,7 +12,8 @@ namespace JumpGame
         [Tooltip("Matches the pause before the result panel shows.")]
         [SerializeField] float resultDelay = 0.9f;
 
-        float nextCreak;
+        float nextCreak, nextKnock;
+        int knocks;
 
         void OnEnable()
         {
@@ -44,13 +45,24 @@ namespace JumpGame
             }
         }
 
-        void OnCrouched() => Sounds.Play(Cue.Tuck, 0.5f);
+        void OnCrouched()
+        {
+            knocks = 0;
+            Sounds.Play(Cue.Tuck, 0.5f);
+        }
 
         void OnTookOff() => Sounds.Play(Cue.Step, 0.8f);
 
         void OnTurn(int turns) => Sounds.Play(Cue.Turn, 0.8f, 1f + 0.08f * Mathf.Min(turns, 6));
 
-        void OnKnocked(float strength) => Sounds.Play(Cue.Knock, Mathf.Clamp01(0.4f + strength * 0.3f));
+        // A body resting on a hull can bump again and again; only the first few real knocks of a dive are heard.
+        void OnKnocked(float strength)
+        {
+            if (Time.time < nextKnock || knocks >= 3) return;
+            knocks++;
+            nextKnock = Time.time + 0.6f;
+            Sounds.Play(Cue.Knock, Mathf.Clamp01(0.35f + strength * 0.2f));
+        }
 
         void OnEntered(DiveResult r)
         {

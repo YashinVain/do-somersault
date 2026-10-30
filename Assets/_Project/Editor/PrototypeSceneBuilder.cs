@@ -80,6 +80,7 @@ namespace JumpGame.EditorTools
             Link(flow, "cam", cam);
 
             BuildSounds(diver, flow);
+            new GameObject("YandexGames").AddComponent<YandexGames>();
 
             var juice = flow.gameObject.AddComponent<DiveJuice>();
             Link(juice, "diver", diver);
@@ -903,9 +904,16 @@ namespace JumpGame.EditorTools
             return follow;
         }
 
+        // A browser has no system fonts, so the text carries its own (DejaVu Sans, free licence) for Cyrillic.
+        static Font UiFont()
+        {
+            var font = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/Fonts/DejaVuSans.ttf");
+            return font != null ? font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
         static UiKit BuildHud(Diver diver, GameFlow flow)
         {
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = UiFont();
             var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
             var pill = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
 
@@ -1081,6 +1089,7 @@ namespace JumpGame.EditorTools
             coinsEarned.color = new Color(1f, 0.82f, 0.3f);
             var retry = Btn("Retry", panel, center, new Vector2(-130f, -150f), new Vector2(220f, 70f), "Ещё раз", "#2BA39C", 30);
             var nextLevel = Btn("NextLevel", panel, center, new Vector2(130f, -150f), new Vector2(220f, 70f), "Дальше", "#EE6A55", 30);
+            var doubleCoins = Btn("DoubleCoins", panel, center, new Vector2(0f, -224f), new Vector2(430f, 56f), "Монеты ×2 за видео", "#C98A1E", 26);
 
             var hud = canvasGo.AddComponent<DiveHud>();
             Link(hud, "diver", diver);
@@ -1106,6 +1115,7 @@ namespace JumpGame.EditorTools
             Link(hud, "resultCoins", coinsEarned);
             Link(hud, "coinCounter", coinCounter);
             Link(hud, "restartButton", restart);
+            Link(hud, "doubleCoinsButton", doubleCoins);
             Link(hud, "retryButton", retry);
             Link(hud, "nextLevelButton", nextLevel);
 

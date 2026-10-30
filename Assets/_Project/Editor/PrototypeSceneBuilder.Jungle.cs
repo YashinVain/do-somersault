@@ -65,7 +65,7 @@ namespace JumpGame.EditorTools
             var stoneDark = Mat("Jungle_StoneDark", "#6F715F");
             var leafA = Mat("Jungle_LeafA", "#2F7D3C");
             var leafB = Mat("Jungle_LeafB", "#4FA04A");
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
             var rng = new System.Random(21);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 
@@ -217,22 +217,18 @@ namespace JumpGame.EditorTools
 
             // 5 — a small rock island with a carved idol, jumping back towards the falls, 9 m.
             var idolIsland = new Vector3(0f, 2f, 34f);
-            Put(LowPolyMeshes.Prism("IdolIsland", 7, 4.6f, 3.4f, 14f), "IdolIsland", root, idolIsland, Vector3.one, mossB);
-            Put(shard, "IdolIslandFoot", root, idolIsland + new Vector3(2.4f, -5.2f, -1f), new Vector3(5f, 3.2f, 4.4f), mossC);
-            Put(rough, "IdolIslandGrass", root, idolIsland + new Vector3(0f, 7.05f, 0.4f), new Vector3(4.8f, 0.6f, 4.4f), capGrass);
+            RockPillar(root, solids, "IdolIsland", idolIsland, -5f, 9f, 4.6f, 3.2f, new[] { mossB, mossC }, capGrass, 93);
             Solid("IdolBody", root, new Vector3(0f, 10.2f, 35.4f), new Vector3(1.7f, 2.6f, 1.4f), stone, solids);
             Box("IdolBrow", root, new Vector3(0f, 11.2f, 34.65f), new Vector3(1.9f, 0.35f, 0.3f), stoneDark);
             Box("IdolEyeL", root, new Vector3(-0.4f, 10.7f, 34.68f), new Vector3(0.3f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
             Box("IdolEyeR", root, new Vector3(0.4f, 10.7f, 34.68f), new Vector3(0.3f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
             Box("IdolMouth", root, new Vector3(0f, 9.7f, 34.68f), new Vector3(0.9f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
-            TaperedSolids(solids, idolIsland, -5f, 9f, 4.4f, 3.3f, 4);
-            spots[5] = Mark("Spot_Idol", root, new Vector3(idolIsland.x, 9f, idolIsland.z - 3.1f));
+            spots[5] = Mark("Spot_Idol", root, new Vector3(idolIsland.x, 9f, idolIsland.z - 2.7f));
             spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // 6 — a totem pole on a rock off the west beach, jumping east, 4.5 m.
             var totemRock = new Vector3(-24f, 0.3f, 30f);
-            Put(LowPolyMeshes.Prism("TotemRock", 6, 3.4f, 2.7f, 7.6f), "TotemRock", root, totemRock, Vector3.one, mossC);
-            TaperedSolids(solids, totemRock, -3.5f, 4.1f, 3.3f, 2.6f, 3);
+            RockPillar(root, solids, "TotemRock", totemRock, -3.5f, 4.1f, 3.4f, 2.6f, new[] { mossC, mossB }, capGrass, 94);
             Solid("TotemPole", root, new Vector3(totemRock.x - 1.1f, 7f, totemRock.z), new Vector3(0.9f, 5.8f, 0.9f), wood, solids);
             foreach (float ty in new[] { 5.3f, 6.6f, 7.9f })
                 Box("TotemFace", root, new Vector3(totemRock.x - 0.62f, ty, totemRock.z), new Vector3(0.08f, 0.8f, 0.8f), ty > 7f ? thatch : woodDark);

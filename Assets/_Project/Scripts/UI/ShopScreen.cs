@@ -10,7 +10,7 @@ namespace JumpGame
         [SerializeField] GameFlow flow;
         [SerializeField] UiPanel panel;
         [SerializeField] UiPanel titlePanel;
-        [SerializeField] Button openButton, backButton, prevButton, nextButton, actionButton;
+        [SerializeField] Button openButton, backButton, prevButton, nextButton, actionButton, adButton;
         [SerializeField] Text nameText, blurbText, perkText, statusText, counterText, coinsText, actionLabel;
 
         int shown;
@@ -22,6 +22,7 @@ namespace JumpGame
             prevButton.onClick.AddListener(() => Step(-1));
             nextButton.onClick.AddListener(() => Step(1));
             actionButton.onClick.AddListener(Act);
+            adButton.onClick.AddListener(WatchForCoins);
             flow.CoinsChanged += Refresh;
             panel.Show(false, true);
         }
@@ -57,6 +58,19 @@ namespace JumpGame
             Sounds.Play(Cue.Select, 0.8f);
             Refresh();
         }
+
+        // A video the player chooses to watch pays out a few coins.
+        void WatchForCoins()
+        {
+            YandexGames.ShowRewarded(() =>
+            {
+                flow.AddCoins(RewardCoins);
+                Sounds.Play(Cue.Coins);
+                Refresh();
+            });
+        }
+
+        const int RewardCoins = 100;
 
         void Act()
         {

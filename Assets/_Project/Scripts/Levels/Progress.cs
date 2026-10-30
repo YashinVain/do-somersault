@@ -16,6 +16,29 @@ namespace JumpGame
         public bool[] ownedSkins = new bool[0];
         public bool[] ownedLocations = new bool[0];
 
+        public int TotalScore
+        {
+            get
+            {
+                int sum = 0;
+                foreach (int b in best) sum += b;
+                return sum;
+            }
+        }
+
+        // How far along the save is, to tell a cloud save from a local one: the more advanced one is kept.
+        public int Weight
+        {
+            get
+            {
+                int w = 0;
+                foreach (int s in stars) w += s * 100;
+                foreach (bool o in ownedSkins) if (o) w += 50;
+                foreach (bool o in ownedLocations) if (o) w += 200;
+                return w + TotalScore / 10 + coins / 20;
+            }
+        }
+
         public void Fit(int levels, int skins, int locations)
         {
             if (best.Length < levels) Array.Resize(ref best, levels);
@@ -54,10 +77,14 @@ namespace JumpGame
             return data;
         }
 
+        // Writes straight to the save slot; the cloud copy goes out a moment later.
         public static void Save(ProgressData data)
         {
-            PlayerPrefs.SetString(Key, JsonUtility.ToJson(data));
+            string json = JsonUtility.ToJson(data);
+            PlayerPrefs.SetString(Key, json);
             PlayerPrefs.Save();
+            YandexGames.SaveData(json);
+            YandexGames.SetScore(data.TotalScore);
         }
     }
 }

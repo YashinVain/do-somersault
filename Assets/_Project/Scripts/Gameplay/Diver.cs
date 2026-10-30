@@ -24,6 +24,20 @@ namespace JumpGame
         [Tooltip("Somersault speed given by the legs, deg/s, for a weak and a full push.")]
         [SerializeField] Vector2 takeoffSpin = new Vector2(70f, 130f);
 
+        [Header("Quick tap")]
+        [Tooltip("A press shorter than this, in seconds, pushes off hard instead of crouching.")]
+        [SerializeField] float tapTime = 0.22f;
+        [Tooltip("Speeds of the push, m/s: forward and up.")]
+        [SerializeField] Vector2 pushSpeed = new Vector2(3.6f, 3.4f);
+        [Tooltip("Somersault speed given by a push, deg/s.")]
+        [SerializeField] float pushSpin = 45f;
+
+        [Header("Stranded")]
+        [Tooltip("Seconds to get off a platform after landing on it, before the dive counts as failed.")]
+        [SerializeField] float strandedTime = 3f;
+        [Tooltip("Speeds of the hop that gets the diver off, m/s: forward and up.")]
+        [SerializeField] Vector2 hopSpeed = new Vector2(3f, 4f);
+
         [Header("Flight")]
         [SerializeField] float gravity = 9.81f;
         [Tooltip("Seconds to fold into a full tuck and to open from it.")]
@@ -59,6 +73,9 @@ namespace JumpGame
         public Vector3 EntryPoint { get; private set; }
 
         public bool UsedTuck { get; private set; }
+        // Lying on a platform, a deck or a hull instead of falling into the water: the player has a few seconds to hop off.
+        public bool Stranded { get; private set; }
+        public float StrandedLeft { get; private set; }
         // The character's own twist on gravity, spin, splash and scoring; set by GameFlow.
         public Perk Perk { get; set; } = Perk.None;
         // A robot that short-circuited in the water.
@@ -92,6 +109,8 @@ namespace JumpGame
         bool hitBuoys;
         bool hitTower, stuck;
         float restTimer;
+        float freeTime;
+        bool pressedNow;
         float faultTime, faultSparkTimer;
         bool wasHeld;
         bool initialized;
@@ -116,6 +135,7 @@ namespace JumpGame
             if (dt <= 0f) return;
 
             bool pressed = held && !wasHeld;
+            pressedNow = pressed;
             bool released = !held && wasHeld;
             wasHeld = held;
 
@@ -168,7 +188,11 @@ namespace JumpGame
             if (lean >= fallAngle)
                 Slip(comVelocity, held);
             else if (released)
-                TakeOff();
+            {
+                // A quick tap is a strong push straight off the edge; holding is the careful, charged jump.
+                if (holdTime < tapTime) Push();
+                else TakeOff();
+            }
         }
 
         // The real toe tips stay where they first stood, whatever the crouch does to the legs.
@@ -196,6 +220,26 @@ namespace JumpGame
             TookOff?.Invoke();
         }
 
+        // A hop off whatever the diver landed on, towards the water.
+        void Hop()
+        {
+            velocity = startRotation * Vector3.forward * (hopSpeed.x * Perk.jump) + Vector3.up * (hopSpeed.y * Perk.jump);
+            angularMomentum = 0f;
+            restTimer = 0f;
+            Stranded = false;
+            TookOff?.Invoke();
+        }
+
+        // The legs kick off hard while the body is still upright: well away from the platform, with a gentle turn.
+        void Push()
+        {
+            velocity = startRotation * Vector3.forward * (pushSpeed.x * Perk.jump) + Vector3.up * (pushSpeed.y * Perk.jump);
+            tuck = 0f;
+            pose.JustLaunched = true;
+            Launch(pushSpin * Perk.spin * straightInertia);
+            TookOff?.Invoke();
+        }
+
         // Held too long: the body simply keeps rotating over the toes and drops, in whatever shape it is in.
         void Slip(Vector3 comVelocity, bool held)
         {
@@ -214,6 +258,8 @@ namespace JumpGame
             pose.Airborne = true;
             pose.Tucked = tuck;
             hitBuoys = hitTower = stuck = false;
+            Stranded = false;
+            freeTime = 0f;
             UsedTuck = false;
             turnsAnnounced = 0;
             restTimer = 0f;
@@ -250,6 +296,13 @@ namespace JumpGame
 
             CollideWithTower(dt, localCom);
             TouchBuoys();
+
+            if (Stranded)
+            {
+                StrandedLeft -= dt;
+                if (pressedNow) Hop();
+                else if (StrandedLeft <= 0f) stuck = true;
+            }
 
             if (stuck)
                 StopOnTower();
@@ -309,14 +362,22 @@ namespace JumpGame
             if (!touching)
             {
                 restTimer = 0f;
+                // Off the surface for a moment: no longer stranded.
+                freeTime += dt;
+                if (Stranded && freeTime > 0.25f) Stranded = false;
                 return;
             }
 
             angularMomentum = omega * Mathf.Rad2Deg * inertia;
             PlaceAroundCom(localCom);
 
+            freeTime = 0f;
             restTimer = velocity.magnitude < restSpeed ? restTimer + dt : 0f;
-            if (restTimer > restTime) stuck = true;
+            if (restTimer > restTime && !Stranded)
+            {
+                Stranded = true;
+                StrandedLeft = strandedTime;
+            }
         }
 
         void StopOnTower()
@@ -415,7 +476,7 @@ namespace JumpGame
             transform.SetPositionAndRotation(startPosition, startRotation);
             velocity = Vector3.zero;
             angularMomentum = Spin = Rotation = tuck = Charge = holdTime = lean = leanVel = 0f;
-            Slipped = hitBuoys = hitTower = stuck = Broken = false;
+            Slipped = hitBuoys = hitTower = stuck = Broken = Stranded = false;
             restTimer = 0f;
             pose.ResetPose();
             wasHeld = true; // ignore the tap that triggered the restart

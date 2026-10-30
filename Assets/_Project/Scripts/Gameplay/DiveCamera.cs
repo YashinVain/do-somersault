@@ -59,14 +59,59 @@ namespace JumpGame
         Vector3 blendPos;
         Quaternion blendRot;
 
-        Vector3 ViewDirection => frame * viewDirection;
+        // Which way round the shot is filmed: 0 as set, bit 0 flips it front-to-back, bit 1 left-to-right.
+        // Picked once per spot, so the view never changes sides in the middle of a dive.
+        int variant;
+        // How far from the framing centre the lens may sit, eased so it never jumps when something comes between.
+        float freeDistance = -1f;
+        float stepDt = 0.016f;
+
+        Vector3 LocalView()
+        {
+            var v = viewDirection;
+            if ((variant & 1) != 0) v.z = -v.z;
+            if ((variant & 2) != 0) v.x = -v.x;
+            return v;
+        }
+
+        Vector3 ViewDirection => frame * LocalView();
 
         public void BlendFromCurrent()
         {
             blendPos = transform.position;
             blendRot = transform.rotation;
             Solve(out focus, out distance);
+            ChooseVariant();
             blendAge = 0f;
+        }
+
+        // Tries the shot as set, then mirrored, and keeps the first one with a clear line to the lens.
+        void ChooseVariant()
+        {
+            variant = 0;
+            freeDistance = -1f;
+            if (obstacles == null) return;
+
+            int best = 0;
+            float bestFree = -1f;
+            for (int v = 0; v < 4; v++)
+            {
+                variant = v;
+                Vector3 pos = focus - ViewDirection.normalized * distance;
+                pos.y = Mathf.Max(pos.y, minHeight);
+                float free = FreeLength(focus, pos);
+                if (free >= distance * 0.95f)
+                {
+                    best = v;
+                    break;
+                }
+                if (free > bestFree)
+                {
+                    bestFree = free;
+                    best = v;
+                }
+            }
+            variant = best;
         }
 
         // A short jolt that dies out in about half a second.
@@ -101,12 +146,14 @@ namespace JumpGame
             blendAge = -1f;
             flightAge = swing = 0f;
             Solve(out focus, out distance);
+            ChooseVariant();
             // While the level map owns the camera, only remember the shot for later.
             if (enabled) Place();
         }
 
         public void Step(float dt)
         {
+            stepDt = dt;
             bool flying = diver.Current == Diver.State.Airborne;
             bool under = diver.Current == Diver.State.Underwater;
             flightAge = flying ? flightAge + dt : under ? flightAge : 0f;
@@ -140,7 +187,7 @@ namespace JumpGame
         // The view direction after the in-flight swing: it turns towards the front of the dive.
         Vector3 SwungDirection()
         {
-            float sign = Mathf.Sign(viewDirection.x);
+            float sign = Mathf.Sign(LocalView().x);
             return Quaternion.AngleAxis(-sign * swingAngle * swing, Vector3.up) * ViewDirection;
         }
 
@@ -160,7 +207,7 @@ namespace JumpGame
             Vector3 ring = zone.transform.position;
             float r = zone.Radius + 0.2f;
 
-            points[0] = body + Vector3.up * 1.1f;
+            points[0] = body + Vector3.up * 1.4f;
             points[1] = body + Vector3.down * 1f;
             points[2] = ring + right * r;
             points[3] = ring - right * r;
@@ -188,22 +235,20 @@ namespace JumpGame
             }
         }
 
-        // Walks from the framing centre towards the lens and stops short of the first solid part.
-        Vector3 KeepOutOfSolids(Vector3 from, Vector3 to)
+        const float ClearStep = 0.4f, ClearMargin = 0.6f, ClearSkip = 1.2f, Closest = 3.5f;
+
+        // How far the line from the framing centre to the lens runs before it meets a solid part.
+        float FreeLength(Vector3 from, Vector3 to)
         {
-            if (obstacles == null) return to;
             Vector3 dir = to - from;
             float length = dir.magnitude;
-            if (length < 0.01f) return to;
+            if (obstacles == null || length < 0.01f) return length;
             dir /= length;
 
-            const float step = 0.4f, margin = 0.6f, closest = 3f;
-            for (float t = step; t <= length + margin; t += step)
-            {
-                if (!obstacles.Contains(from + dir * t, margin)) continue;
-                return from + dir * Mathf.Min(length, Mathf.Max(closest, t - step - margin));
-            }
-            return to;
+            for (float t = ClearSkip; t <= length + ClearMargin; t += ClearStep)
+                if (obstacles.Contains(from + dir * t, ClearMargin))
+                    return Mathf.Min(length, Mathf.Max(0f, t - ClearStep - ClearMargin));
+            return length;
         }
 
         void Place()
@@ -215,7 +260,7 @@ namespace JumpGame
             float w = HighlightWeight();
             if (w > 0f)
             {
-                float swingAround = highlightOrbit * Mathf.Sign(viewDirection.x) * Mathf.SmoothStep(0f, 1f, highlightAge / highlightTime);
+                float swingAround = highlightOrbit * Mathf.Sign(LocalView().x) * Mathf.SmoothStep(0f, 1f, highlightAge / highlightTime);
                 Vector3 close = Quaternion.AngleAxis(swingAround, Vector3.up) * dir;
                 close = Vector3.Slerp(close, Vector3.down, 0.15f).normalized;
                 dir = Vector3.Slerp(dir, close, w).normalized;
@@ -225,7 +270,15 @@ namespace JumpGame
 
             Vector3 pos = f - dir * d;
             pos.y = Mathf.Max(pos.y, Mathf.Lerp(minHeight, 0.9f, w));
-            pos = KeepOutOfSolids(f, pos);
+
+            // If something stands between, the lens comes in, but smoothly: quickly enough not to clip, slowly on the way back out.
+            Vector3 offset = pos - f;
+            float wanted = offset.magnitude;
+            float allowed = wanted > 0.01f ? Mathf.Min(wanted, Mathf.Max(Closest, FreeLength(f, pos))) : wanted;
+            if (freeDistance < 0f) freeDistance = allowed;
+            float rate = allowed < freeDistance ? 10f : 2.5f;
+            freeDistance = Mathf.Lerp(freeDistance, allowed, 1f - Mathf.Exp(-rate * stepDt));
+            if (wanted > 0.01f) pos = f + offset / wanted * Mathf.Min(wanted, freeDistance);
             transform.position = pos;
             transform.LookAt(f);
 

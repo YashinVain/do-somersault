@@ -26,7 +26,8 @@ namespace JumpGame
             foreach (var b in solids)
             {
                 var grown = b;
-                grown.Expand(margin * 2f);
+                // Wide margin sideways, thin above and below: the lens is usually well clear of the ground and decks.
+                grown.Expand(new Vector3(margin * 2f, margin * 0.5f, margin * 2f));
                 if (grown.Contains(p)) return true;
             }
             return false;

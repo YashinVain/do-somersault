@@ -15,6 +15,7 @@ namespace JumpGame
         [SerializeField] UiPanel hud;
         [SerializeField] ScreenCurtain curtain;
         [SerializeField] ShopScreen shop;
+        [SerializeField] LeaderboardScreen board;
         [SerializeField] Button menuButton;
 
         [Header("Title")]
@@ -88,6 +89,7 @@ namespace JumpGame
             if (flow.Saved == null) flow.Begin();
             ShowTitle();
             if (curtain != null) curtain.Reveal();
+            YandexGames.LoadingFinished();
         }
 
         // The title is the real location with the diver on its highest spot, seen from below.
@@ -120,6 +122,7 @@ namespace JumpGame
 
         void EnterMap()
         {
+            YandexGames.GameplayStop();
             if (mode == Mode.Title && resume >= 0) flow.Load(resume);
             resume = -1;
 
@@ -150,6 +153,12 @@ namespace JumpGame
         void Play()
         {
             if (!flow.IsOpen(flow.Index)) return;
+            AdGate.Run(StartDive);
+        }
+
+        void StartDive()
+        {
+            YandexGames.GameplayStart();
             open = false;
             summaryPanel.Show(false, true);
             mapPanel.Show(false);
@@ -411,6 +420,11 @@ namespace JumpGame
             {
                 Sounds.Play(Cue.Back);
                 summaryPanel.Show(false);
+            }
+            else if (board != null && board.IsOpen)
+            {
+                Sounds.Play(Cue.Back);
+                board.Close();
             }
             else if (shop != null && shop.IsOpen)
             {

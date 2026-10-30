@@ -122,6 +122,44 @@ namespace JumpGame
 
         public void RequestSummary() => SummaryRequested?.Invoke();
 
+        // Coins from outside the game (a watched ad).
+        public void AddCoins(int amount)
+        {
+            progress.coins += Mathf.Max(0, amount);
+            Commit();
+        }
+
+        // The cloud copy of the save arrives a moment after start. The more advanced of the two wins;
+        // when the local one is ahead (or there is no cloud save yet) it is sent up instead.
+        void OnCloudData(string json)
+        {
+            if (progress == null || !Persist) return;
+            ProgressData cloud = null;
+            if (!string.IsNullOrEmpty(json))
+            {
+                try { cloud = JsonUtility.FromJson<ProgressData>(json); }
+                catch (ArgumentException) { cloud = null; }
+            }
+
+            if (cloud == null || diver.Current != Diver.State.Ready)
+            {
+                Commit();
+                return;
+            }
+            cloud.Fit(Count, Skins.All.Length, LocationCount);
+            if (cloud.Weight <= progress.Weight)
+            {
+                Commit();
+                return;
+            }
+
+            progress = cloud;
+            Progress.Save(progress);
+            ApplySkin();
+            CoinsChanged?.Invoke();
+            SkinChanged?.Invoke();
+        }
+
         public bool BuyLocation(int location)
         {
             int price = PriceOf(location);
@@ -228,6 +266,7 @@ namespace JumpGame
 
         void OnDestroy()
         {
+            YandexGames.CloudData -= OnCloudData;
             if (subscribed) diver.Entered -= OnEntered;
         }
 
@@ -239,6 +278,7 @@ namespace JumpGame
             if (!subscribed)
             {
                 diver.Entered += OnEntered;
+                YandexGames.CloudData += OnCloudData;
                 subscribed = true;
             }
 

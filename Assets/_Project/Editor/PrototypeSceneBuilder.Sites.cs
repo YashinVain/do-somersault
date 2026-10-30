@@ -512,8 +512,14 @@ namespace JumpGame.EditorTools
             soundRt.pivot = new Vector2(0f, 0.5f);
             soundRt.anchoredPosition = new Vector2(98f, -262f);
 
+            titleBoard = ui.Btn("Rating", panelRt, left, new Vector2(316f, -262f), new Vector2(220f, 46f), "Рейтинг", "#34495E", 22);
+            var boardRt = (RectTransform)titleBoard.transform;
+            boardRt.pivot = new Vector2(0f, 0.5f);
+            boardRt.anchoredPosition = new Vector2(316f, -262f);
+            Flatten(titleBoard);
+
             var panel = panelRt.gameObject.AddComponent<UiPanel>();
-            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, shopRt, medals.rectTransform, soundRt });
+            LinkArray(panel, "staggered", new Object[] { title.rectTransform, bar, tagline.rectTransform, playRt, shopRt, medals.rectTransform, soundRt, boardRt });
             return (panel, play, medals);
         }
 
@@ -557,7 +563,7 @@ namespace JumpGame.EditorTools
 
             // 3D markers: a life buoy with the dive number, its medals below and a pole down to the water.
             var markersRoot = new GameObject("MapMarkers").transform;
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = UiFont();
             var ringOpen = Glow(Mat("Marker_Open", "#2BA39C", smoothness: 0.5f), 0.45f);
             var ringCurrent = Glow(Mat("Marker_Current", "#EE6A55", smoothness: 0.5f), 0.5f);
             var ringLocked = Glow(Mat("Marker_Locked", "#7D8794", smoothness: 0.3f), 0.25f);
@@ -637,6 +643,7 @@ namespace JumpGame.EditorTools
 
             var extras = BuildMapExtras(ui, mapPanel);
             var shop = BuildShop(ui, flow, titlePanel);
+            var board = BuildLeaderboard(ui, titlePanel);
 
             var hudUi = ui.hud.AddComponent<UiPanel>();
             LinkArray(hudUi, "staggered", new Object[0]);
@@ -656,6 +663,7 @@ namespace JumpGame.EditorTools
             Link(map, "hud", hudUi);
             Link(map, "curtain", curtain);
             Link(map, "shop", shop);
+            Link(map, "board", board);
             Link(map, "menuButton", ui.menuButton);
             Link(map, "titlePanel", titlePanel);
             Link(map, "playButton", play);

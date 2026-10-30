@@ -19,7 +19,7 @@ namespace JumpGame.EditorTools
             var iceB = Mat("Ice_B", "#B3D3E5", smoothness: 0.5f);
             var iceC = Mat("Ice_C", "#8DB9D2", smoothness: 0.5f);
             var snow = Mat("Snow", "#F3F8FA", smoothness: 0.2f);
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
             var rng = new System.Random(8);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 

@@ -222,6 +222,12 @@ namespace JumpGame.EditorTools
                 },
                 new Scenario
                 {
+                    name = "tap", level = 4,
+                    held = t => t < 0.12f,
+                    frames = new[] { 0.1f, 0.2f, 0.35f, 0.5f, 0.7f, 0.9f, 1.1f, 1.3f, 1.5f, 1.7f, 1.9f, 2.3f }
+                },
+                new Scenario
+                {
                     name = "fat", level = 4, skin = 2,
                     held = t => t < 0.9f || (t > 1.02f && t < 1.9f),
                     frames = new[] { 1.8f, 2.0f, 2.2f, 2.4f, 2.5f, 2.6f, 2.7f, 2.8f, 3.0f, 3.2f, 3.5f, 3.9f }

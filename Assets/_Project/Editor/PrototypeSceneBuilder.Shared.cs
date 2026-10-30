@@ -88,18 +88,78 @@ namespace JumpGame.EditorTools
             }
         }
 
-        // A rock ledge sticking out of a straight cliff or wall face at x, with its top at height h and reaching `reach` past the face.
+        // A weathered rock pillar: a tapering faceted core, a second twisted core beside it, darker strata bands like the cliff's,
+        // a few boulders at the foot and a flat turf (or snow) top. Wide at the water, narrower towards the top.
+        static void RockPillar(Transform parent, List<Bounds> solids, string name, Vector3 center, float bottomY, float topY,
+                               float radius, float topRadius, Material[] rocks, Material cap, int seed, float squashZ = 1f)
+        {
+            var rng = new System.Random(seed);
+            float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            var chunk = RockMesh;
+            float height = topY - bottomY;
+            Material rock(int i) => rocks[i % rocks.Length];
+
+            // Main core, a little leaning.
+            var main = Put(LowPolyMeshes.Prism(name + "_Core", 7, radius, topRadius * 1.05f, height), name + "_Core", parent,
+                           new Vector3(center.x, (bottomY + topY) * 0.5f, center.z), new Vector3(1f, 1f, squashZ), rock(0));
+            main.localRotation = Quaternion.Euler(R(-2f, 2f), R(0f, 50f), R(-2f, 2f));
+
+            // A second, thinner core twisted against the first breaks the symmetry; it stops short of the top.
+            float h2 = height * 0.78f;
+            var side = Put(LowPolyMeshes.Prism(name + "_Side", 6, radius * 0.8f, topRadius * 0.82f, h2), name + "_Side", parent,
+                           new Vector3(center.x + radius * 0.3f, bottomY + h2 * 0.5f, center.z - radius * 0.18f * squashZ), new Vector3(1f, 1f, squashZ), rock(1));
+            side.localRotation = Quaternion.Euler(0f, R(20f, 40f), 0f);
+
+            // Strata: thin darker bands a hair wider than the core.
+            foreach (float f in new[] { 0.3f, 0.58f, 0.8f })
+            {
+                float rr = Mathf.Lerp(radius, topRadius, f) * 1.05f;
+                var band = Put(LowPolyMeshes.Prism(name + "_Band" + (int)(f * 10), 7, rr, rr * 0.99f, 0.45f), name + "_Band", parent,
+                               new Vector3(center.x, bottomY + height * f, center.z), new Vector3(1f, 1f, squashZ), rock(2));
+                band.localRotation = main.localRotation;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                float a = R(0f, 6.28f), r = radius * R(0.95f, 1.25f);
+                Put(chunk, name + "_Boulder", parent, center + new Vector3(Mathf.Cos(a) * r, bottomY + R(2.4f, 3.6f), Mathf.Sin(a) * r * squashZ),
+                    new Vector3(R(1.8f, 3.2f), R(1.6f, 2.8f), R(1.8f, 3.2f)), rock(i + 1));
+            }
+
+            var top = Put(LowPolyMeshes.Prism(name + "_Top", 8, topRadius * 1.04f, topRadius, 0.7f), name + "_Top", parent,
+                          new Vector3(center.x, topY - 0.35f, center.z), new Vector3(1f, 1f, squashZ), cap);
+            top.localRotation = Quaternion.Euler(0f, R(0f, 40f), 0f);
+            TaperedSolids(solids, center, bottomY, topY, radius * 0.88f, topRadius * 0.95f, Mathf.Max(3, Mathf.RoundToInt(height / 3.5f)), squashZ);
+        }
+
+        // Rounded stones: more facets and little jitter, so they read as boulders rather than spiky shards.
+        static Mesh RockMesh => LowPolyMeshes.Icosphere("Boulder", 1, 0.5f, 0.09f, 9);
+
+        // A rock outcrop in a straight wall at x, with its top at height h and reaching `reach` past the face: four blocks stepped
+        // in towards the wall as they go down, each turned a few degrees, so it reads as a corbel of the cliff itself.
         static Transform WallLedge(Transform parent, List<Bounds> solids, string name, float x, float h, float reach, float faceZ,
                                    Material top, Material under, Mesh shard)
         {
-            float edge = faceZ + reach, back = faceZ - 2.5f;
-            var c = new Vector3(x, h - 0.35f, (edge + back) * 0.5f);
-            var s = new Vector3(2.8f, 0.7f, edge - back);
-            Box(name, parent, c, s, top);
-            Put(shard, name + "_Under", parent, new Vector3(x, h - 1.6f, faceZ + reach * 0.35f), new Vector3(3.2f, 2.6f, reach + 1.2f), under);
-            solids.Add(new Bounds(c, s));
-            solids.Add(new Bounds(new Vector3(x, h - 1.7f, faceZ + reach * 0.4f), new Vector3(2.6f, 2.2f, reach * 0.8f + 0.6f)));
-            return Mark("Spot_" + name, parent, new Vector3(x, h, edge));
+            (float width, float reachK, float thick, float yaw)[] steps =
+            {
+                (3.3f, 1f, 1.3f, -3f), (2.9f, 0.76f, 1.5f, 4f), (2.4f, 0.5f, 1.8f, -4f), (1.9f, 0.28f, 2.0f, 5f)
+            };
+            float y = h;
+            for (int i = 0; i < steps.Length; i++)
+            {
+                var (w, k, t, yaw) = steps[i];
+                float r = reach * k;
+                var c = new Vector3(x + (i % 2 == 0 ? 0.1f : -0.1f), y - t * 0.5f, faceZ + r * 0.5f - 0.8f);
+                var s = new Vector3(w, t, r + 1.6f);
+                var block = Box(name + "_Block", parent, c, s, i % 2 == 0 ? top : under);
+                block.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                solids.Add(new Bounds(c, new Vector3(w * 0.96f, t, r + 1.5f)));
+                y -= t - 0.1f;
+            }
+
+            // A pale line along the front edge to show where to stand.
+            Box(name + "_Chalk", parent, new Vector3(x, h + 0.008f, faceZ + reach - 0.1f), new Vector3(2.5f, 0.01f, 0.12f), Mat("PaintWhite", "#F2EFE6"));
+            return Mark("Spot_" + name, parent, new Vector3(x, h, faceZ + reach));
         }
     }
 }

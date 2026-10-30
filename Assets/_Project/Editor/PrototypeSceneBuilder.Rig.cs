@@ -186,7 +186,7 @@ namespace JumpGame.EditorTools
             Put(LowPolyMeshes.Prism("NavGallery", 12, 3f, 3f, 0.3f), "Gallery", root, new Vector3(navTower.x, 13.85f, navTower.z), Vector3.one, steelDark);
             Put(LowPolyMeshes.Prism("NavLamp", 8, 1f, 1f, 1.5f), "Lamp", root, new Vector3(navTower.x, 14.8f, navTower.z), Vector3.one, lit);
             Put(cone, "NavCap", root, new Vector3(navTower.x, 16.2f, navTower.z), new Vector3(2.2f, 1.2f, 2.2f), red);
-            Put(LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13), "NavRock", root, navTower + new Vector3(0f, -8f, 0f), new Vector3(9f, 5f, 8f), steelDark);
+            Put(RockMesh, "NavRock", root, navTower + new Vector3(0f, -8f, 0f), new Vector3(9f, 5f, 8f), steelDark);
             solids.Add(new Bounds(navTower + new Vector3(0f, -6f, 0f), new Vector3(7f, 4f, 6.4f)));
             solids.Add(new Bounds(navTower + new Vector3(0f, 0f, 0f), new Vector3(3f, 16f, 3f)));
             solids.Add(new Bounds(new Vector3(navTower.x, 13.85f, navTower.z), new Vector3(6f, 0.3f, 6f)));

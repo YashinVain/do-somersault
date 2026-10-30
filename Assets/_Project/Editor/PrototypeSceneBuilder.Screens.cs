@@ -6,7 +6,7 @@ namespace JumpGame.EditorTools
     // The screens that sit on top of the map: buying a location, the summary after a location and the character shop.
     public static partial class PrototypeSceneBuilder
     {
-        static Button titleShop;
+        static Button titleShop, titleBoard;
 
         struct MapExtras
         {
@@ -171,6 +171,10 @@ namespace JumpGame.EditorTools
             counter.rectTransform.anchoredPosition = new Vector2(243f, -212f);
 
             var back = ui.Btn("Back", rt, left, new Vector2(98f, -282f), new Vector2(180f, 58f), "Назад", "#2BA39C", 26);
+            var ad = ui.Btn("AdCoins", rt, left, new Vector2(298f, -282f), new Vector2(330f, 58f), "+100 монет за видео", "#C98A1E", 24);
+            ((RectTransform)ad.transform).pivot = new Vector2(0f, 0.5f);
+            ((RectTransform)ad.transform).anchoredPosition = new Vector2(298f, -282f);
+            Flatten(ad);
             ((RectTransform)back.transform).pivot = new Vector2(0f, 0.5f);
             ((RectTransform)back.transform).anchoredPosition = new Vector2(98f, -282f);
             Flatten(back);
@@ -183,7 +187,7 @@ namespace JumpGame.EditorTools
 
             var shop = ui.canvas.gameObject.AddComponent<ShopScreen>();
             var panel = rt.gameObject.AddComponent<UiPanel>();
-            LinkArray(panel, "staggered", new Object[] { heading, title, blurb, perk, status, actionRt, prev.transform, next.transform, counter.rectTransform, back.transform });
+            LinkArray(panel, "staggered", new Object[] { heading, title, blurb, perk, status, actionRt, prev.transform, next.transform, counter.rectTransform, back.transform, ad.transform });
             Link(shop, "flow", flow);
             Link(shop, "panel", panel);
             Link(shop, "titlePanel", titlePanel);
@@ -192,6 +196,7 @@ namespace JumpGame.EditorTools
             Link(shop, "prevButton", prev);
             Link(shop, "nextButton", next);
             Link(shop, "actionButton", action);
+            Link(shop, "adButton", ad);
             Link(shop, "nameText", nameText);
             Link(shop, "blurbText", blurbText);
             Link(shop, "perkText", perkText);
@@ -201,6 +206,65 @@ namespace JumpGame.EditorTools
             Link(shop, "actionLabel", action.GetComponentInChildren<Text>());
             rt.gameObject.SetActive(false);
             return shop;
+        }
+
+        // The all-time leaderboard: the top ten in a column on the left, the hero shot staying on the right.
+        static LeaderboardScreen BuildLeaderboard(UiKit ui, UiPanel titlePanel)
+        {
+            var left = new Vector2(0f, 0.5f);
+            var rt = ui.Stretch("LeaderboardScreen", ui.canvas);
+
+            var shade = ui.Stretch("Shade", rt).gameObject.AddComponent<RawImage>();
+            shade.texture = AssetDatabaseLoadShade();
+            shade.raycastTarget = true;
+
+            var staggered = new System.Collections.Generic.List<Object>();
+            Text Line(string n, Vector2 pos, Vector2 size, int fontSize, TextAnchor align, string color, FontStyle style, bool leftPivot)
+            {
+                var t = Flat(ui, n, rt, left, pos, size, fontSize, align, color, style);
+                t.rectTransform.pivot = new Vector2(leftPivot ? 0f : 1f, 0.5f);
+                t.rectTransform.anchoredPosition = pos;
+                return t;
+            }
+
+            var heading = Line("Heading", new Vector2(96f, 270f), new Vector2(500f, 36f), 26, TextAnchor.MiddleLeft, "#8E9CAB", FontStyle.Normal, true);
+            heading.text = "РЕЙТИНГ";
+            var title = Line("Title", new Vector2(96f, 214f), new Vector2(700f, 70f), 52, TextAnchor.MiddleLeft, "#F4F1EA", FontStyle.Bold, true);
+            title.text = "Лучшие ныряльщики";
+            staggered.Add(heading.rectTransform);
+            staggered.Add(title.rectTransform);
+
+            const int rows = 10;
+            var names = new Text[rows];
+            var scores = new Text[rows];
+            for (int i = 0; i < rows; i++)
+            {
+                float y = 150f - i * 38f;
+                names[i] = Line("Name_" + i, new Vector2(98f, y), new Vector2(420f, 34f), 24, TextAnchor.MiddleLeft, "#E6EBF0", FontStyle.Normal, true);
+                scores[i] = Line("Score_" + i, new Vector2(600f, y), new Vector2(150f, 34f), 24, TextAnchor.MiddleRight, "#FFD24A", FontStyle.Bold, false);
+            }
+            var status = Line("Status", new Vector2(98f, 40f), new Vector2(560f, 80f), 26, TextAnchor.MiddleLeft, "#C8D2DB", FontStyle.Normal, true);
+            status.horizontalOverflow = HorizontalWrapMode.Wrap;
+            staggered.Add(status.rectTransform);
+
+            var back = ui.Btn("Back", rt, left, new Vector2(98f, -282f), new Vector2(180f, 58f), "Назад", "#2BA39C", 26);
+            ((RectTransform)back.transform).pivot = new Vector2(0f, 0.5f);
+            ((RectTransform)back.transform).anchoredPosition = new Vector2(98f, -282f);
+            Flatten(back);
+            staggered.Add(back.transform);
+
+            var screen = ui.canvas.gameObject.AddComponent<LeaderboardScreen>();
+            var panel = rt.gameObject.AddComponent<UiPanel>();
+            LinkArray(panel, "staggered", staggered.ToArray());
+            Link(screen, "panel", panel);
+            Link(screen, "titlePanel", titlePanel);
+            Link(screen, "openButton", titleBoard);
+            Link(screen, "backButton", back);
+            LinkArray(screen, "names", names);
+            LinkArray(screen, "scores", scores);
+            Link(screen, "status", status);
+            rt.gameObject.SetActive(false);
+            return screen;
         }
 
         static Texture2D AssetDatabaseLoadShade() => UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/TitleShade.png");

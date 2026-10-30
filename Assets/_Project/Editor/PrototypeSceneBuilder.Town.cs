@@ -22,7 +22,7 @@ namespace JumpGame.EditorTools
                 Mat("Town_Sand", "#E8C99B"), Mat("Town_Salmon", "#E7A58D"), Mat("Town_Cream", "#EDE1B4"),
                 Mat("Town_Mint", "#9CC7B8"), Mat("Town_Mauve", "#C9A3B8"), Mat("Town_Yellow", "#F0D58A")
             };
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
 
             var root = Child("Town", site);
             var solids = new List<Bounds>();

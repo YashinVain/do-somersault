@@ -136,30 +136,58 @@ namespace JumpGame.EditorTools
             spots[1] = deckMarks[0];
             spots[3] = deckMarks[1];
 
-            // 2 — an old willow-like tree on a rocky islet, with a plank nailed to its long branch, 7 m.
-            var bark = Mat("Trunk", "#8A5B3D");
-            var crownMat = Mat("Willow", "#6E9E52");
+            // 2 — an old tree on a rocky islet: a thick trunk, a limb holding up a long branch, and a plank at its end, 7 m.
+            var bark = Mat("Trunk", "#7E5238");
+            var barkLight = Mat("TrunkLight", "#946447");
+            var crownA = Mat("Willow", "#6E9E52");
+            var crownB = Mat("WillowDark", "#4F8444");
             var rockMat = Mat("LakeRock", "#8C8F8A");
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var rockMatB = Mat("LakeRockB", "#767A76");
+            var shard = RockMesh;
             var islet = new Vector3(-17f, 0f, -9f);
-            Put(shard, "Islet", towerRoot, islet + new Vector3(0f, -0.6f, 0f), new Vector3(6f, 2.6f, 5.5f), rockMat);
-            Put(rough, "IsletGrass", towerRoot, islet + new Vector3(0f, 0.25f, -0.4f), new Vector3(4.2f, 1.2f, 3.6f), Mat("LakeGrass", "#5E9A4E"));
-            solids.Add(new Bounds(islet + new Vector3(0f, -0.6f, 0f), new Vector3(5f, 2.6f, 4.6f)));
-            solids.Add(new Bounds(islet + new Vector3(0f, 0.2f, -0.4f), new Vector3(3.4f, 1.4f, 3f)));
-            var trunkBase = islet + new Vector3(0f, 0.5f, -0.6f);
-            var trunkTop = new Vector3(-17f, 6.6f, -4.6f);
-            var trunk = Put(hex, "Trunk", towerRoot, (trunkBase + trunkTop) * 0.5f, new Vector3(0.7f, (trunkTop - trunkBase).magnitude, 0.7f), bark);
-            trunk.localRotation = Quaternion.FromToRotation(Vector3.up, (trunkTop - trunkBase).normalized);
-            var branchEnd = new Vector3(-17f, 6.85f, -1.6f);
-            var branch = Put(hex, "Branch", towerRoot, (trunkTop + branchEnd) * 0.5f, new Vector3(0.36f, (branchEnd - trunkTop).magnitude + 0.3f, 0.36f), bark);
-            branch.localRotation = Quaternion.FromToRotation(Vector3.up, (branchEnd - trunkTop).normalized);
-            Box("Plank", towerRoot, new Vector3(-17f, 6.95f, -2.15f), new Vector3(1.1f, 0.1f, 1.2f), woodB);
-            solids.Add(new Bounds(new Vector3(-17f, 6.95f, -2.15f), new Vector3(1.1f, 0.1f, 1.2f)));
-            solids.Add(new Bounds(new Vector3(-17f, 3.6f, -6.8f), new Vector3(0.8f, 6.4f, 3.6f)));
-            foreach (var (o, s) in new[] { (new Vector3(-1.2f, 8.4f, -6.4f), 4.4f), (new Vector3(1.4f, 8.9f, -5.6f), 3.8f), (new Vector3(0.2f, 9.8f, -7.4f), 4f) })
+            RockPillar(towerRoot, solids, "Islet", islet, -4f, 0.7f, 3.8f, 2.9f, new[] { rockMat, rockMatB }, Mat("LakeGrass", "#5E9A4E"), 41);
+
+            // The trunk in three bent pieces, each a little thinner, then roots gripping the rock.
+            void Limb(string n, Vector3 a, Vector3 b, float rA, float rB, Material m)
             {
-                var crown = Put(rough, "Crown", towerRoot, new Vector3(-17f, 0f, 0f) + o, new Vector3(s, s * 0.8f, s), crownMat);
-                AddSway(crown, Vector3.forward, 1.5f, 0.6f, o.x);
+                var limb = Put(LowPolyMeshes.Prism(n, 7, rA, rB, (b - a).magnitude), n, towerRoot, (a + b) * 0.5f, Vector3.one, m);
+                limb.localRotation = Quaternion.FromToRotation(Vector3.up, (b - a).normalized);
+            }
+            var t0 = new Vector3(-17f, 0.5f, -9.4f);
+            var t1 = new Vector3(-17.25f, 2.8f, -9.1f);
+            var t2 = new Vector3(-17f, 5.0f, -8.3f);
+            var t3 = new Vector3(-17f, 6.5f, -7.1f);
+            Limb("LakeTreeTrunk0", t0, t1, 0.75f, 0.62f, bark);
+            Limb("LakeTreeTrunk1", t1, t2, 0.62f, 0.5f, barkLight);
+            Limb("LakeTreeTrunk2", t2, t3, 0.5f, 0.42f, bark);
+            Limb("LakeTreeBranch", new Vector3(-17f, 6.1f, -7.2f), new Vector3(-17f, 6.62f, -1.9f), 0.36f, 0.26f, bark);
+            Limb("LakeTreeBrace", new Vector3(-17f, 4.6f, -8.2f), new Vector3(-17f, 6.2f, -4.5f), 0.17f, 0.13f, barkLight);
+            Limb("LakeTreeTwig", new Vector3(-17f, 6.4f, -4.6f), new Vector3(-16.1f, 7.6f, -4.2f), 0.1f, 0.05f, bark);
+            for (int k = 0; k < 4; k++)
+            {
+                float a = k * 1.6f + 0.4f;
+                Limb("LakeTreeRoot" + k, t0 + new Vector3(0f, 0.2f, 0f), t0 + new Vector3(Mathf.Cos(a) * 1.5f, -0.5f, Mathf.Sin(a) * 1.5f), 0.26f, 0.1f, bark);
+            }
+            Box("Plank", towerRoot, new Vector3(-17f, 6.95f, -2.2f), new Vector3(1.2f, 0.1f, 1.4f), woodB);
+            solids.Add(new Bounds(new Vector3(-17f, 6.95f, -2.2f), new Vector3(1.2f, 0.1f, 1.4f)));
+            solids.Add(new Bounds(new Vector3(-17f, 6.4f, -4.6f), new Vector3(0.6f, 0.62f, 5.4f)));
+            solids.Add(new Bounds(new Vector3(-17.1f, 3.4f, -8.7f), new Vector3(1.2f, 6f, 1.2f)));
+
+            // The crown sits right on the top of the trunk and on the branch: every cluster overlaps its limb, and thin twigs run into it.
+            Limb("LakeTreeTop", t3, new Vector3(-17f, 7.9f, -7.2f), 0.4f, 0.25f, bark);
+            // Solid leaf mass: a dark core inside, bright clusters overlapping it and each other on every side, so the crown has no gaps to see through.
+            var leafMesh = LowPolyMeshes.Icosphere("Foliage", 1, 0.5f, 0.07f, 3);
+            (Vector3 at, float size)[] crowns =
+            {
+                (new Vector3(-17f, 7.7f, -7.3f), 4.2f), (new Vector3(-18.7f, 7.5f, -7.6f), 2.9f), (new Vector3(-15.4f, 7.5f, -7.1f), 2.9f),
+                (new Vector3(-17f, 9.1f, -7.4f), 3.1f), (new Vector3(-17f, 7.3f, -9.2f), 2.8f), (new Vector3(-17f, 7.1f, -5.5f), 2.1f),
+                (new Vector3(-18.2f, 8.7f, -8.4f), 2.4f), (new Vector3(-15.8f, 8.6f, -8.2f), 2.4f)
+            };
+            for (int i = 0; i < crowns.Length; i++)
+            {
+                var crown = Put(leafMesh, "Crown", towerRoot, crowns[i].at, new Vector3(crowns[i].size, crowns[i].size * 0.85f, crowns[i].size), i == 0 ? crownB : i % 2 == 0 ? crownA : crownB);
+                crown.localRotation = Quaternion.Euler(0f, i * 53f, 0f);
+                if (i > 0) Limb("LakeTreeCrownTwig" + i, new Vector3(-17f, i == 5 ? 6.35f : 6.9f, i == 5 ? -5.4f : -7.2f), crowns[i].at, 0.12f, 0.06f, bark);
             }
             spots[2] = Mark("Spot_Branch", towerRoot, new Vector3(-17f, 7f, -1.6f));
 
@@ -187,8 +215,6 @@ namespace JumpGame.EditorTools
                 solids.Add(new Bounds(c, s));
             }
             // The broken end: a few blocks hanging off and lying in the water below.
-            for (int k = 0; k < 3; k++)
-                Put(shard, "Rubble", towerRoot, new Vector3(aqX + (k - 1) * 0.9f, aqTop - 0.5f - k * 0.2f, aqEnd - 0.1f - k * 0.4f), new Vector3(1.3f, 0.9f, 1.4f), stone);
             Put(shard, "Fallen", towerRoot, new Vector3(aqX - 1.5f, -0.5f, aqEnd + 2.5f), new Vector3(3f, 2f, 2.6f), stoneDark);
             Put(shard, "Fallen", towerRoot, new Vector3(aqX + 2f, -0.8f, aqEnd + 4f), new Vector3(2.4f, 1.6f, 2.2f), stone);
             spots[4] = Mark("Spot_Aqueduct", towerRoot, new Vector3(aqX, aqTop, aqEnd));
@@ -209,11 +235,8 @@ namespace JumpGame.EditorTools
             spots[5].localRotation = Quaternion.Euler(0f, -90f, 0f);
 
             // 6 — a boulder standing in the water by the north shore, jumping south, 6 m.
-            var boulder = new Vector3(8f, 1f, 25f);
-            Put(LowPolyMeshes.Prism("LakeBoulder", 7, 3.6f, 2.5f, 10f), "Boulder", towerRoot, boulder, Vector3.one, rockMat);
-            Put(shard, "BoulderChunk", towerRoot, boulder + new Vector3(2.2f, -3.2f, 1.4f), new Vector3(3.4f, 2.4f, 3f), rockMat);
-            Put(rough, "BoulderMoss", towerRoot, boulder + new Vector3(0f, 5.1f, 0.4f), new Vector3(3.6f, 0.6f, 3.2f), Mat("LakeGrass", "#5E9A4E"));
-            TaperedSolids(solids, boulder, -4f, 6f, 3.5f, 2.35f, 4);
+            var boulder = new Vector3(8f, 0f, 25f);
+            RockPillar(towerRoot, solids, "Boulder", boulder, -4f, 6f, 3.8f, 2.5f, new[] { rockMat, rockMatB }, Mat("LakeGrass", "#5E9A4E"), 77);
             spots[6] = Mark("Spot_Boulder", towerRoot, new Vector3(boulder.x, 6f, boulder.z - 2.3f));
             spots[6].localRotation = Quaternion.Euler(0f, 180f, 0f);
 
@@ -244,7 +267,7 @@ namespace JumpGame.EditorTools
             var pad = Mat("LilyPad", "#4E8F45");
             var lily = Mat("Lily", "#F2B8C6");
             var rockMat = Mat("LakeRock", "#8C8F8A");
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
 
             var rng = new System.Random(11);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
@@ -315,7 +338,7 @@ namespace JumpGame.EditorTools
             var rockMats = new[] { Mat("RockA", "#C48A56"), Mat("RockB", "#A9713F"), Mat("RockC", "#8E5E36") };
             var grassTop = Mat("CliffGrass", "#7FAE5A");
             var chalk = Mat("PaintWhite", "#F2EFE6");
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
             var rng = new System.Random(5);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 
@@ -393,7 +416,7 @@ namespace JumpGame.EditorTools
             solids.Add(new Bounds(y0 + new Vector3(0f, 1.35f, 7.05f), new Vector3(1.5f, 3.3f, 1.5f)));
             spots[0] = Mark("Spot_Yacht", site, y0 + new Vector3(0f, 3f, 7.2f));
 
-            spots[1] = Ledge("Ledge_8", -8f, 8f, 2.9f);
+            spots[1] = WallLedge(cliff, solids, "Ledge_8", -8f, 8f, 2.9f, CliffFaceZ(-8f), rockMats[1], rockMats[0], shard);
 
             // 2 — a fisherman's house on a rock terrace; dive off the edge of its flat roof, 11.5 m.
             var lime = Mat("House_Lime", "#F2EEE4");
@@ -424,7 +447,7 @@ namespace JumpGame.EditorTools
             Put(Smooth, "Plant", cliff, new Vector3(hx - 3.6f, 11.8f, -2.8f), new Vector3(0.8f, 0.7f, 0.8f), grassTop);
             spots[2] = Mark("Spot_Roof", cliff, new Vector3(hx, 11.5f, roofC.z + roofS.z * 0.5f));
 
-            spots[3] = Ledge("Ledge_15", -2f, 15f, 2.9f);
+            spots[3] = WallLedge(cliff, solids, "Ledge_15", -2f, 15f, 2.9f, CliffFaceZ(-2f), rockMats[1], rockMats[0], shard);
 
             // 4 — a lighthouse on a sea rock beside the cliff; dive off its gallery, 18 m.
             var white = Mat("Lighthouse_White", "#F4F2EC");
@@ -452,20 +475,14 @@ namespace JumpGame.EditorTools
 
             // 5 — a sea stack out in the water, jumping back towards the cliff, 7 m.
             var stackA = new Vector3(12f, 0.5f, 30f);
-            Put(LowPolyMeshes.Prism("SeaStackA", 7, 4.4f, 2.9f, 13f), "SeaStack", cliff, stackA, Vector3.one, rockMats[2]);
-            Put(shard, "SeaStackChunk", cliff, stackA + new Vector3(-2.6f, -5.4f, 1f), new Vector3(4f, 3f, 3.6f), rockMats[1]);
-            Put(shard, "SeaStackCap", cliff, stackA + new Vector3(0f, 6.1f, 0.2f), new Vector3(4.6f, 0.5f, 4.4f), grassTop);
-            TaperedSolids(solids, stackA, -6f, 7f, 4.2f, 2.75f, 4);
+            RockPillar(cliff, solids, "StackA", stackA, -6f, 7f, 4.4f, 2.8f, rockMats, grassTop, 71);
             spots[5] = Mark("Spot_StackA", cliff, new Vector3(stackA.x, 7f, stackA.z - 2.55f));
             spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
             Palm(cliff, new Vector3(stackA.x + 0.6f, 7f, stackA.z + 0.6f), 0.8f, 40f);
 
             // 6 — a tall sea stack on the west side, jumping east, 12 m.
             var stackB = new Vector3(-32f, 3f, 24f);
-            Put(LowPolyMeshes.Prism("SeaStackB", 8, 5.4f, 3.5f, 18f), "SeaStack", cliff, stackB, Vector3.one, rockMats[0]);
-            Put(shard, "SeaStackChunk", cliff, stackB + new Vector3(3.4f, -7f, -1.2f), new Vector3(5f, 4f, 4.2f), rockMats[2]);
-            Put(shard, "SeaStackCap", cliff, stackB + new Vector3(0f, 9.1f, 0f), new Vector3(5.4f, 0.6f, 5.2f), grassTop);
-            TaperedSolids(solids, stackB, -6f, 12f, 5.2f, 3.4f, 5);
+            RockPillar(cliff, solids, "StackB", stackB, -6f, 12f, 5.2f, 3.3f, rockMats, grassTop, 72);
             spots[6] = Mark("Spot_StackB", cliff, new Vector3(stackB.x + 3.1f, 12f, stackB.z));
             spots[6].localRotation = Quaternion.Euler(0f, 90f, 0f);
             Put(cone, "StackBird", cliff, new Vector3(stackB.x - 1f, 12.4f, stackB.z + 1f), new Vector3(0.3f, 0.5f, 0.3f), Mat("Gull_White", "#F4F4F0"));

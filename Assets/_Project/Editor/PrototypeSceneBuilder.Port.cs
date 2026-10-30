@@ -27,7 +27,7 @@ namespace JumpGame.EditorTools
             };
 
             var root = Child("Port", site);
-            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
+            var shard = RockMesh;
             var solids = new List<Bounds>();
             var spots = new Transform[7];
             float half = SeaBlockSize * 0.5f;
