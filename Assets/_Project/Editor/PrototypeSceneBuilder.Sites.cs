@@ -538,7 +538,7 @@ namespace JumpGame.EditorTools
             // Map overlay: location name on top, a card for the picked dive at the bottom.
             var mapPanel = ui.Stretch("MapScreen", ui.canvas);
             var locName = ui.Label("LocationName", mapPanel, top, new Vector2(0f, -44f), new Vector2(900f, 70f), 50, TextAnchor.MiddleCenter);
-            var locInfo = ui.Label("LocationInfo", mapPanel, top, new Vector2(0f, -96f), new Vector2(600f, 34f), 24, TextAnchor.MiddleCenter, FontStyle.Normal);
+            var locInfo = ui.Label("LocationInfo", mapPanel, top, new Vector2(0f, -106f), new Vector2(600f, 34f), 24, TextAnchor.MiddleCenter, FontStyle.Normal);
             var locked = ui.Label("Locked", mapPanel, center, new Vector2(0f, -40f), new Vector2(1000f, 60f), 32, TextAnchor.MiddleCenter);
 
             var card = ui.Rect("Card", mapPanel, bottom, new Vector2(0f, 24f), new Vector2(780f, 150f));
@@ -547,7 +547,7 @@ namespace JumpGame.EditorTools
             cardBg.type = Image.Type.Sliced;
             cardBg.color = new Color(0.08f, 0.12f, 0.22f, 0.78f);
             var cardTitle = ui.Label("Title", card, topLeft, new Vector2(26f, -14f), new Vector2(380f, 40f), 28, TextAnchor.UpperLeft);
-            var cardBest = ui.Label("Best", card, topLeft, new Vector2(318f, -16f), new Vector2(150f, 36f), 22, TextAnchor.UpperRight, FontStyle.Normal);
+            var cardBest = ui.Label("Best", card, topLeft, new Vector2(396f, -64f), new Vector2(170f, 32f), 22, TextAnchor.UpperRight, FontStyle.Normal);
             var dots = new Image[3];
             var goals = new Text[3];
             for (int i = 0; i < 3; i++)

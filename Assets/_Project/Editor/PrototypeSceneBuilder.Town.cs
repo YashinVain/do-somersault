@@ -14,6 +14,7 @@ namespace JumpGame.EditorTools
             var stone = Mat("Town_Stone", "#C9BEAA");
             var stoneDark = Mat("Town_StoneDark", "#9A9080");
             var roofTile = Mat("Town_Roof", "#B5512F");
+            var gable = LowPolyMeshes.GableRoof("GableRoof");
             var glassMat = Mat("Town_Glass", "#2B3A48", smoothness: 0.8f);
             var wood = Mat("Town_Wood", "#7A5233");
             var green = Mat("Town_Green", "#4E7A4A");
@@ -47,12 +48,8 @@ namespace JumpGame.EditorTools
             {
                 var body = new Vector3(x, quayTop + h * 0.5f, front - 4.5f);
                 Solid("House", root, body, new Vector3(w, h, 9f), plaster[c], solids);
-                // Gable roof: two tilted slabs meeting at a ridge that runs along X.
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    var slope = Box("Roof", root, new Vector3(x, quayTop + h + 0.85f, front - 4.5f + s * 2.2f), new Vector3(w + 0.8f, 0.3f, 5.4f), roofTile);
-                    slope.localRotation = Quaternion.Euler(-s * 26f, 0f, 0f);
-                }
+                // A closed gable roof with a ridge along X: slopes to both sides, flat triangles at the ends.
+                Put(gable, "Roof", root, new Vector3(x, quayTop + h - 0.02f, front - 4.5f), new Vector3(w + 0.5f, 2.6f, 10f), roofTile);
                 for (float fy = 2.5f; fy < h - 1.5f; fy += 3f)
                     for (float wx = -w * 0.5f + 1.6f; wx < w * 0.5f - 0.8f; wx += 2.4f)
                     {
@@ -186,11 +183,7 @@ namespace JumpGame.EditorTools
             foreach (var (x, w, h, c) in farHouses)
             {
                 Solid("FarHouse", root, new Vector3(x, quayTop + h * 0.5f, farFront + 4.5f), new Vector3(w, h, 9f), plaster[c], solids);
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    var slope = Box("Roof", root, new Vector3(x, quayTop + h + 0.85f, farFront + 4.5f + s * 2.2f), new Vector3(w + 0.8f, 0.3f, 5.4f), roofTile);
-                    slope.localRotation = Quaternion.Euler(-s * 26f, 0f, 0f);
-                }
+                Put(gable, "Roof", root, new Vector3(x, quayTop + h - 0.02f, farFront + 4.5f), new Vector3(w + 0.5f, 2.6f, 10f), roofTile);
                 for (float fy = 2.5f; fy < h - 1.5f; fy += 3f)
                     for (float wx = -w * 0.5f + 1.6f; wx < w * 0.5f - 0.8f; wx += 2.4f)
                         Box("Window", root, new Vector3(x + wx, quayTop + fy, farFront - 0.03f), new Vector3(0.9f, 1.4f, 0.07f), glassMat);

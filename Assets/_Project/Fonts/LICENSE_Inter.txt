@@ -1,0 +1,7 @@
+﻿Inter (Inter-Medium.ttf)
+Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Licensed under the SIL Open Font License, Version 1.1.
+Full licence text: https://openfontlicense.org  (also https://github.com/rsms/inter/blob/master/LICENSE.txt)
+
+The font may be used, embedded and redistributed with software, including games, free of charge,
+as long as this notice and the licence stay with it and the font is not sold on its own.

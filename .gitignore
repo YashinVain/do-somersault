@@ -41,3 +41,6 @@ desktop.ini
 # Blender backups
 *.blend1
 *.blend2
+
+# Подбор звуков: скачанные наборы и копии, в игру попадает только выбранное
+/SoundLab/

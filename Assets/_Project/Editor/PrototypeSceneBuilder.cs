@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -904,10 +904,10 @@ namespace JumpGame.EditorTools
             return follow;
         }
 
-        // A browser has no system fonts, so the text carries its own (DejaVu Sans, free licence) for Cyrillic.
+        // A browser has no system fonts, so the text carries its own (Inter, SIL OFL) for Cyrillic.
         static Font UiFont()
         {
-            var font = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/Fonts/DejaVuSans.ttf");
+            var font = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/Fonts/Inter-Medium.ttf");
             return font != null ? font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
 

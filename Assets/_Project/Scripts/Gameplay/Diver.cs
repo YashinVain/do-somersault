@@ -24,14 +24,6 @@ namespace JumpGame
         [Tooltip("Somersault speed given by the legs, deg/s, for a weak and a full push.")]
         [SerializeField] Vector2 takeoffSpin = new Vector2(70f, 130f);
 
-        [Header("Quick tap")]
-        [Tooltip("A press shorter than this, in seconds, pushes off hard instead of crouching.")]
-        [SerializeField] float tapTime = 0.22f;
-        [Tooltip("Speeds of the push, m/s: forward and up.")]
-        [SerializeField] Vector2 pushSpeed = new Vector2(3.6f, 3.4f);
-        [Tooltip("Somersault speed given by a push, deg/s.")]
-        [SerializeField] float pushSpin = 45f;
-
         [Header("Stranded")]
         [Tooltip("Seconds to get off a platform after landing on it, before the dive counts as failed.")]
         [SerializeField] float strandedTime = 3f;
@@ -189,9 +181,7 @@ namespace JumpGame
                 Slip(comVelocity, held);
             else if (released)
             {
-                // A quick tap is a strong push straight off the edge; holding is the careful, charged jump.
-                if (holdTime < tapTime) Push();
-                else TakeOff();
+                TakeOff();
             }
         }
 
@@ -227,16 +217,6 @@ namespace JumpGame
             angularMomentum = 0f;
             restTimer = 0f;
             Stranded = false;
-            TookOff?.Invoke();
-        }
-
-        // The legs kick off hard while the body is still upright: well away from the platform, with a gentle turn.
-        void Push()
-        {
-            velocity = startRotation * Vector3.forward * (pushSpeed.x * Perk.jump) + Vector3.up * (pushSpeed.y * Perk.jump);
-            tuck = 0f;
-            pose.JustLaunched = true;
-            Launch(pushSpin * Perk.spin * straightInertia);
             TookOff?.Invoke();
         }
 

@@ -337,6 +337,35 @@ namespace JumpGame.EditorTools
             return Save(name, verts);
         }
 
+        // A closed gable roof of size 1x1x1 (scale it): the ridge runs along X at the top, the eaves lie on the Z edges,
+        // the ends are flat triangles. The origin is the middle of the base.
+        public static Mesh GableRoof(string name)
+        {
+            const float x = 0.5f, z = 0.5f;
+            Vector3 a = new(-x, 0f, -z), b = new(x, 0f, -z), c = new(x, 0f, z), d = new(-x, 0f, z);
+            Vector3 r0 = new(-x, 1f, 0f), r1 = new(x, 1f, 0f);
+            var centre = new Vector3(0f, 0.3f, 0f);
+            var v = new List<Vector3>();
+            Facing(v, centre, d, c, r1, r0);   // slope towards +Z
+            Facing(v, centre, b, a, r0, r1);   // slope towards -Z
+            Facing(v, centre, c, b, r1);       // end at +X
+            Facing(v, centre, a, d, r0);       // end at -X
+            Facing(v, centre, a, b, c, d);     // underside
+            return Save(name, v);
+        }
+
+        // Adds a triangle or quad, wound so that it faces away from `inside`.
+        static void Facing(List<Vector3> v, Vector3 inside, params Vector3[] corners)
+        {
+            var normal = Vector3.Cross(corners[1] - corners[0], corners[2] - corners[0]);
+            var centre = Vector3.zero;
+            foreach (var p in corners) centre += p;
+            centre /= corners.Length;
+            if (Vector3.Dot(normal, centre - inside) < 0f) System.Array.Reverse(corners);
+            Tri(v, corners[0], corners[1], corners[2]);
+            if (corners.Length == 4) Tri(v, corners[0], corners[2], corners[3]);
+        }
+
         // Flat rectangle facing up, centred on the origin.
         public static Mesh Quad(string name, float sizeX, float sizeZ)
         {
