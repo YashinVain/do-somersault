@@ -71,7 +71,7 @@ namespace JumpGame.EditorTools
 
             var root = Child("Jungle", site);
             var solids = new List<Bounds>();
-            var spots = new Transform[5];
+            var spots = new Transform[7];
             float half = SeaBlockSize * 0.5f;
 
             // The cliff behind the lagoon, moss-green, with a flat jungle plateau on top.
@@ -84,11 +84,7 @@ namespace JumpGame.EditorTools
                 Box("End", root, new Vector3(side * (half - 0.3f), (JungleTop - 6f) * 0.5f, (zf + JungleBack) * 0.5f), new Vector3(0.6f, JungleTop + 6f, zf - JungleBack), mossB);
             }
             Box("Back", root, new Vector3(0f, (JungleTop - 6f) * 0.5f, JungleBack + 0.3f), new Vector3(SeaBlockSize, JungleTop + 6f, 0.6f), mossB);
-            for (float x = -half; x < half - 0.1f; x += 7.5f)
-            {
-                float front = Mathf.Min(JungleFaceZ(x), JungleFaceZ(x + 3.75f), JungleFaceZ(x + 7.5f)) - 0.6f;
-                solids.Add(new Bounds(new Vector3(x + 3.75f, (JungleTop - 6f) * 0.5f, (front + JungleBack) * 0.5f), new Vector3(7.5f, JungleTop + 6f, front - JungleBack)));
-            }
+            WallSolids(wallMesh, solids, SeaBlockSize, 24, 10, -6f, JungleTop, JungleBack);
 
             // The waterfall: a pale sheet down the wall, mist at its foot.
             var fall = Mat("Waterfall", "#E8F6F8", transparent: true, alpha: 0.78f, smoothness: 0.6f);
@@ -105,6 +101,16 @@ namespace JumpGame.EditorTools
             }
             for (int i = 0; i < 9; i++)
                 Put(shard, "FallStone", root, new Vector3(fx + R(-5f, 5f), R(-0.6f, 0.1f), JungleFaceZ(fx) + R(0.8f, 3.5f)), new Vector3(R(1.2f, 2.4f), R(0.8f, 1.6f), R(1.2f, 2f)), i % 2 == 0 ? mossB : mossC);
+
+            // The beaches on both sides: low blocks that follow the shoreline, so a short dive lands on sand.
+            for (float bx = 17f; bx < half; bx += 3f)
+                foreach (float sgn in new[] { -1f, 1f })
+                {
+                    float cx = sgn * (bx + 1.5f), shoreZ = JungleShoreZ(cx) - 0.8f;
+                    if (shoreZ < JungleFaceZ(cx) + 1f) continue;
+                    float frontEdge = JungleFaceZ(cx) + 0.5f;
+                    solids.Add(new Bounds(new Vector3(cx, (1.0f - 6f) * 0.5f, (frontEdge + shoreZ) * 0.5f), new Vector3(3f, 7f, shoreZ - frontEdge)));
+                }
 
             // 0 — a wooden dock under the cliff, 1.2 m.
             float dockX = -12f, dockTop = 1.2f, dockEnd = 1f;
@@ -142,7 +148,10 @@ namespace JumpGame.EditorTools
             var thSize = new Vector3(5.4f, 0.3f, 4.6f);
             Solid("TreehouseFloor", root, thFloor, thSize, wood, solids);
             foreach (float px in new[] { thx - 2.2f, thx + 2.2f })
+            {
                 Beam("TreehousePost", root, new Vector3(px, 1f, 1.5f), new Vector3(px, 10.7f, 1.5f), 0.34f, woodDark);
+                solids.Add(new Bounds(new Vector3(px, 5.8f, 1.5f), new Vector3(0.4f, 9.8f, 0.4f)));
+            }
             Solid("TreehouseHut", root, new Vector3(thx, 12.35f, -1.8f), new Vector3(3.6f, 2.8f, 2.4f), wood, solids);
             var hutRoof = Put(cone, "HutRoof", root, new Vector3(thx, 14.6f, -1.8f), new Vector3(5.6f, 1.9f, 4.2f), thatch);
             hutRoof.localRotation = Quaternion.Euler(0f, 45f, 0f);
@@ -206,7 +215,31 @@ namespace JumpGame.EditorTools
                 }
             }
 
-            var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, -1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -3f });
+            // 5 — a small rock island with a carved idol, jumping back towards the falls, 9 m.
+            var idolIsland = new Vector3(0f, 2f, 34f);
+            Put(LowPolyMeshes.Prism("IdolIsland", 7, 4.6f, 3.4f, 14f), "IdolIsland", root, idolIsland, Vector3.one, mossB);
+            Put(shard, "IdolIslandFoot", root, idolIsland + new Vector3(2.4f, -5.2f, -1f), new Vector3(5f, 3.2f, 4.4f), mossC);
+            Put(rough, "IdolIslandGrass", root, idolIsland + new Vector3(0f, 7.05f, 0.4f), new Vector3(4.8f, 0.6f, 4.4f), capGrass);
+            Solid("IdolBody", root, new Vector3(0f, 10.2f, 35.4f), new Vector3(1.7f, 2.6f, 1.4f), stone, solids);
+            Box("IdolBrow", root, new Vector3(0f, 11.2f, 34.65f), new Vector3(1.9f, 0.35f, 0.3f), stoneDark);
+            Box("IdolEyeL", root, new Vector3(-0.4f, 10.7f, 34.68f), new Vector3(0.3f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
+            Box("IdolEyeR", root, new Vector3(0.4f, 10.7f, 34.68f), new Vector3(0.3f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
+            Box("IdolMouth", root, new Vector3(0f, 9.7f, 34.68f), new Vector3(0.9f, 0.2f, 0.1f), Mat("Jungle_Dark", "#1E221C"));
+            TaperedSolids(solids, idolIsland, -5f, 9f, 4.4f, 3.3f, 4);
+            spots[5] = Mark("Spot_Idol", root, new Vector3(idolIsland.x, 9f, idolIsland.z - 3.1f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // 6 — a totem pole on a rock off the west beach, jumping east, 4.5 m.
+            var totemRock = new Vector3(-24f, 0.3f, 30f);
+            Put(LowPolyMeshes.Prism("TotemRock", 6, 3.4f, 2.7f, 7.6f), "TotemRock", root, totemRock, Vector3.one, mossC);
+            TaperedSolids(solids, totemRock, -3.5f, 4.1f, 3.3f, 2.6f, 3);
+            Solid("TotemPole", root, new Vector3(totemRock.x - 1.1f, 7f, totemRock.z), new Vector3(0.9f, 5.8f, 0.9f), wood, solids);
+            foreach (float ty in new[] { 5.3f, 6.6f, 7.9f })
+                Box("TotemFace", root, new Vector3(totemRock.x - 0.62f, ty, totemRock.z), new Vector3(0.08f, 0.8f, 0.8f), ty > 7f ? thatch : woodDark);
+            spots[6] = Mark("Spot_Totem", root, new Vector3(totemRock.x + 2.2f, 4.1f, totemRock.z));
+            spots[6].localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, -1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -3f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 14f));
             site.position = SiteOffsets[6];
 

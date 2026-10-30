@@ -210,6 +210,14 @@ namespace JumpGame.EditorTools
             Column("Column_L", -2.6f, 7.25f);
             Column("Column_R", 2.6f, 4.75f);
 
+            // The deck around the pool is solid too, for a dive that falls short.
+            void DeckSolid(float x0, float x1, float z0, float z1)
+                => solids.Add(new Bounds(new Vector3((x0 + x1) * 0.5f, (DeckTop - PoolDepth) * 0.5f, (z0 + z1) * 0.5f), new Vector3(x1 - x0, DeckTop + PoolDepth, z1 - z0)));
+            DeckSolid(-12f, PoolX.x, -8f, 20f);
+            DeckSolid(PoolX.y, 12f, -8f, 20f);
+            DeckSolid(PoolX.x, PoolX.y, -8f, PoolZ.x);
+            DeckSolid(PoolX.x, PoolX.y, PoolZ.y, 20f);
+
             var edges = new Transform[Platforms.Length];
             for (int i = 0; i < Platforms.Length; i++)
             {
@@ -257,9 +265,36 @@ namespace JumpGame.EditorTools
             solids.Add(new Bounds(block, blockSize));
             var blockEdge = Mark("StartingBlock_Mark", root, new Vector3(3.9f, 0.8f, PoolZ.x));
 
-            var spots = new Transform[edges.Length + 1];
+            // A springboard on the west deck, jumping east across the pool.
+            var boardWhite = Mat("Board_White", "#F4F2EC");
+            var boardAqua = Mat("Board_Aqua", "#2BA39C", smoothness: 0.4f);
+            Solid("BoardBase", root, new Vector3(-7.6f, 0.65f, 6f), new Vector3(1.2f, 0.7f, 0.8f), boardWhite, solids);
+            Solid("Springboard", root, new Vector3(-5.9f, 0.95f, 6f), new Vector3(3.4f, 0.1f, 0.8f), boardAqua, solids);
+            Box("BoardGrip", root, new Vector3(-5.9f, 1.006f, 6f), new Vector3(3.2f, 0.012f, 0.7f), Mat("Board_Grip", "#1E7F79"));
+            var boardEdge = Mark("Springboard_Mark", root, new Vector3(-4.3f, 1f, 6f));
+            boardEdge.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            // A lifeguard chair on the east deck, jumping west.
+            var chairWood = Mat("Chair_Wood", "#C9C2B2");
+            var chairRed = Mat("Chair_Red", "#D9503F");
+            foreach (float cx in new[] { 5.75f, 6.95f })
+                foreach (float cz in new[] { 11.3f, 12.7f })
+                    Solid("ChairLeg", root, new Vector3(cx, 1.35f, cz), new Vector3(0.14f, 2.1f, 0.14f), chairWood, solids);
+            Solid("ChairSeat", root, new Vector3(6.35f, 2.3f, 12f), new Vector3(1.7f, 0.12f, 1.8f), chairRed, solids);
+            Solid("ChairBack", root, new Vector3(7.1f, 2.9f, 12f), new Vector3(0.12f, 1.2f, 1.8f), chairRed, solids);
+            Box("ChairRoofPost", root, new Vector3(7.0f, 3.2f, 11.2f), new Vector3(0.08f, 1.6f, 0.08f), chairWood);
+            Box("ChairRoofPost", root, new Vector3(7.0f, 3.2f, 12.8f), new Vector3(0.08f, 1.6f, 0.08f), chairWood);
+            Box("ChairRoof", root, new Vector3(6.6f, 4.05f, 12f), new Vector3(2.2f, 0.1f, 2.4f), chairRed);
+            for (float y = 0.55f; y < 2.3f; y += 0.4f)
+                Box("ChairRung", root, new Vector3(5.7f, y, 12f), new Vector3(0.05f, 0.04f, 0.8f), chairWood).localRotation = Quaternion.identity;
+            var chairEdge = Mark("Chair_Mark", root, new Vector3(5.5f, 2.36f, 12f));
+            chairEdge.localRotation = Quaternion.Euler(0f, -90f, 0f);
+
+            var spots = new Transform[edges.Length + 3];
             spots[0] = blockEdge;
             for (int i = 0; i < edges.Length; i++) spots[i + 1] = edges[i];
+            spots[edges.Length + 1] = boardEdge;
+            spots[edges.Length + 2] = chairEdge;
             return MakeTower(root, spots, solids);
         }
 
@@ -334,56 +369,75 @@ namespace JumpGame.EditorTools
             // Medal thresholds are filled in by DiveCapture.TuneLevels from the best dive it can find.
             var layout = new[]
             {
+                // Pool: block 0.8 / springboard 1 / lifeguard chair 2.4 / tower 3, 5, 7.5, 10 m. Platform numbers are the order the spots were built in.
                 L(0, 0, 2.0f, 0.9f, 0f, TaskKind.HeadFirst),
-                L(0, 1, 3.0f, 1.3f, 0f, TaskKind.FeetFirst),
-                L(0, 2, 3.5f, 1.2f, 0f, TaskKind.Turns, 1f),
-                L(0, 3, 4.0f, 1.1f, 0f, TaskKind.CannonballInZone),
-                L(0, 4, 4.6f, 1.1f, 0f, TaskKind.Turns, 2f),
+                L(0, 5, 2.6f, 1.1f, 0f, TaskKind.FeetFirst),
+                L(0, 6, 3.2f, 1.1f, 0f, TaskKind.Turns, 1f),
+                L(0, 1, 3.0f, 1.3f, 0f, TaskKind.CannonballInZone),
+                L(0, 2, 3.5f, 1.2f, 0f, TaskKind.Turns, 1.5f),
+                L(0, 3, 4.0f, 1.1f, 0f, TaskKind.ZoneNoBuoys),
+                L(0, 4, 4.6f, 1.1f, 0f, TaskKind.Turns, 2.5f),
 
+                // Lake: rowboat 0.35 / jetty 0.8 / tower arm 5 / boulder 6 / tree 7 / tower top 9 / aqueduct 12 m.
+                L(1, 5, 2.4f, 1.2f, 0f, TaskKind.FeetFirst),
                 L(1, 0, 2.2f, 1.1f, 0f, TaskKind.NoTuck),
                 L(1, 1, 3.8f, 1.2f, 0.9f, TaskKind.Bullseye),
+                L(1, 6, 4.6f, 1.1f, 0f, TaskKind.HeadFirst),
                 L(1, 2, 4.6f, 1.0f, 0f, TaskKind.Turns, 1.5f),
                 L(1, 3, 5.0f, 1.1f, 0f, TaskKind.ZoneNoBuoys),
                 L(1, 4, 6.2f, 1.0f, 1.2f, TaskKind.CleanTurns, 2.5f),
 
+                // Cliffs: yacht 3 / sea stack 7 / ledge 8 / house roof 11.5 / tall stack 12 / ledge 15 / lighthouse 18 m.
                 L(2, 0, 3.2f, 1.2f, 0f, TaskKind.Turns, 1f),
+                L(2, 5, 4.8f, 1.1f, 0f, TaskKind.FeetFirst),
                 L(2, 1, 5.0f, 1.1f, 0f, TaskKind.CannonballInZone),
                 L(2, 2, 5.6f, 1.0f, 1.0f, TaskKind.CleanTurns, 2.5f),
+                L(2, 6, 6.0f, 1.0f, 0f, TaskKind.Turns, 2f),
                 L(2, 3, 6.0f, 1.0f, 0f, TaskKind.Turns, 3f),
                 L(2, 4, 7.5f, 0.9f, 1.3f, TaskKind.Bullseye),
 
-                // Night port: quay 1.2 / tug 4.8 / containers 9 / crane catwalk 15 / crane boom 23.
+                // Night port: quay 1.2 / barge 2.2 / tug 4.8 / containers 9 / harbour light 12 / crane catwalk 15 / crane boom 23.
                 L(3, 0, 2.6f, 1.1f, 0f, TaskKind.HeadFirst),
+                L(3, 5, 3.2f, 1.1f, 0f, TaskKind.FeetFirst),
                 L(3, 1, 5.4f, 1.2f, 0f, TaskKind.Turns, 1f),
                 L(3, 2, 5.6f, 1.1f, 0f, TaskKind.CannonballInZone),
+                L(3, 6, 6.2f, 1.0f, 0f, TaskKind.ZoneNoBuoys),
                 L(3, 3, 6.8f, 1.0f, 1.0f, TaskKind.CleanTurns, 2f),
                 L(3, 4, 8.6f, 0.95f, 0f, TaskKind.Bullseye),
 
-                // Northern bay: floe 0.6 / icebreaker 3.4 / iceberg 8 / glacier ledge 14 / ice arch 20.
+                // Northern bay: floe 0.6 / icebreaker 3.4 / small berg 5.5 / berg 8 / glacier ledge 14 / ice tower 16 / ice arch 20 m.
                 L(4, 0, 2.4f, 1.1f, 0f, TaskKind.FeetFirst),
                 L(4, 1, 4.8f, 1.1f, 0.8f, TaskKind.ZoneNoBuoys),
+                L(4, 5, 4.8f, 1.1f, 0f, TaskKind.Turns, 1.5f),
                 L(4, 2, 5.4f, 1.0f, 0f, TaskKind.NoTuck),
                 L(4, 3, 6.4f, 1.0f, 1.1f, TaskKind.CleanTurns, 2f),
+                L(4, 6, 7.0f, 1.0f, 0f, TaskKind.CannonballInZone),
                 L(4, 4, 7.8f, 0.95f, 0f, TaskKind.Turns, 3f),
 
-                // Old town: steps 0.9 / bridge 5 / balcony 9 / bell tower 15 / dome 22.
+                // Old town: steps 0.9 / bridge 5 / far balcony 7 / balcony 9 / bell tower 15 / clock tower 18 / dome 22 m.
                 L(5, 0, 2.4f, 1.0f, 0f, TaskKind.HeadFirst),
                 L(5, 1, 4.4f, 1.1f, 0f, TaskKind.Turns, 1.5f),
+                L(5, 5, 4.8f, 1.1f, 0f, TaskKind.FeetFirst),
                 L(5, 2, 5.4f, 1.0f, 0.9f, TaskKind.CannonballInZone),
                 L(5, 3, 6.6f, 1.0f, 0f, TaskKind.CleanTurns, 2.5f),
+                L(5, 6, 7.0f, 1.0f, 0f, TaskKind.Turns, 3f),
                 L(5, 4, 8.2f, 0.95f, 1.2f, TaskKind.Bullseye),
 
-                // Jungle falls (paid): dock 1.2 / rock ledge 6 / treehouse 11 / temple 16 / lip of the falls 24.
+                // Jungle falls (paid): dock 1.2 / totem rock 4.1 / ledge 6 / idol island 9 / treehouse 11 / temple 16 / falls 24 m.
                 L(6, 0, 2.8f, 1.1f, 0f, TaskKind.Turns, 1f),
+                L(6, 6, 3.6f, 1.1f, 0f, TaskKind.HeadFirst),
                 L(6, 1, 5.0f, 1.1f, 0f, TaskKind.FeetFirst),
-                L(6, 2, 6.4f, 1.0f, 0.8f, TaskKind.Turns, 2f),
+                L(6, 5, 5.4f, 1.0f, 0f, TaskKind.Turns, 2f),
+                L(6, 2, 6.4f, 1.0f, 0.8f, TaskKind.CleanTurns, 1.5f),
                 L(6, 3, 7.2f, 1.0f, 0f, TaskKind.CannonballInZone),
                 L(6, 4, 8.8f, 0.95f, 1.2f, TaskKind.Bullseye),
 
-                // Offshore rig (paid): landing 2.5 / walkway 8 / deck 13 / helideck 19 / crane boom 27.
+                // Offshore rig (paid): landing 2.5 / supply vessel 3.2 / walkway 8 / deck 13 / nav tower 14 / helideck 19 / crane boom 27 m.
                 L(7, 0, 3.2f, 1.1f, 0f, TaskKind.HeadFirst),
+                L(7, 5, 4.0f, 1.1f, 0f, TaskKind.FeetFirst),
                 L(7, 1, 5.0f, 1.1f, 0f, TaskKind.CleanTurns, 1.5f),
                 L(7, 2, 6.4f, 1.0f, 0.8f, TaskKind.Turns, 2.5f),
+                L(7, 6, 6.6f, 1.0f, 0f, TaskKind.CannonballInZone),
                 L(7, 3, 8.0f, 1.0f, 0f, TaskKind.Turns, 3f),
                 L(7, 4, 9.8f, 0.9f, 1.0f, TaskKind.Bullseye)
             };
@@ -834,7 +888,8 @@ namespace JumpGame.EditorTools
             var cam = go.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.Skybox;
             cam.fieldOfView = 55f;
-            cam.farClipPlane = 300f;
+            cam.nearClipPlane = 0.9f;
+            cam.farClipPlane = 320f;
             go.AddComponent<AudioListener>();
 
             var follow = go.AddComponent<DiveCamera>();
@@ -971,10 +1026,11 @@ namespace JumpGame.EditorTools
             var taskDot = Dot("TaskDot", root, topLeft, new Vector2(32f, -74f), 22f);
             var taskText = Label("TaskText", root, topLeft, new Vector2(64f, -70f), new Vector2(440f, 34f), 22, TextAnchor.MiddleLeft);
             var menuButton = Btn("Menu", root, topRight, new Vector2(-24f, -18f), new Vector2(120f, 56f), "Меню", "#2BA39C", 26);
+            var restart = Btn("Restart", root, topRight, new Vector2(-154f, -18f), new Vector2(150f, 56f), "Заново", "#EE6A55", 26);
             var best = Label("Best", root, topRight, new Vector2(-28f, -84f), new Vector2(360f, 40f), 26, TextAnchor.MiddleRight);
-            var coinDot = Dot("CoinDot", root, topRight, new Vector2(-158f, -26f), 26f);
+            var coinDot = Dot("CoinDot", root, topRight, new Vector2(-24f, -124f), 26f);
             coinDot.color = new Color(1f, 0.8f, 0.26f);
-            var coinCounter = Label("CoinCounter", root, topRight, new Vector2(-192f, -22f), new Vector2(150f, 34f), 26, TextAnchor.MiddleRight);
+            var coinCounter = Label("CoinCounter", root, topRight, new Vector2(-58f, -120f), new Vector2(150f, 34f), 26, TextAnchor.MiddleRight);
 
             var turns = Label("Turns", root, top, new Vector2(0f, -90f), new Vector2(600f, 130f), 96, TextAnchor.UpperCenter);
             var hint = Label("Hint", root, new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1100f, 120f), 32, TextAnchor.LowerCenter);
@@ -1049,6 +1105,7 @@ namespace JumpGame.EditorTools
             Link(hud, "resultTask", task);
             Link(hud, "resultCoins", coinsEarned);
             Link(hud, "coinCounter", coinCounter);
+            Link(hud, "restartButton", restart);
             Link(hud, "retryButton", retry);
             Link(hud, "nextLevelButton", nextLevel);
 

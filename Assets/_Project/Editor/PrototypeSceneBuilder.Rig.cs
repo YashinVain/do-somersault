@@ -24,7 +24,7 @@ namespace JumpGame.EditorTools
 
             var root = Child("Rig", site);
             var solids = new List<Bounds>();
-            var spots = new Transform[5];
+            var spots = new Transform[7];
 
             // Four legs standing on the sea floor, with bracing between them that shows from the side.
             float[] legX = { -14f, 14f };
@@ -164,7 +164,36 @@ namespace JumpGame.EditorTools
             Box("BoomTipEdge", root, new Vector3(-12f, 26.535f, 4.7f), new Vector3(1.4f, 0.01f, 0.14f), white);
             spots[4] = Mark("Spot_Crane", root, new Vector3(-12f, 26.525f, 4.7f));
 
-            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, -1f, 1f, 1f }, new[] { 0f, -2.5f, -2.5f, -2.5f, -2.5f });
+            // 5 — a supply vessel standing off the rig, bow towards it; dive off the bow deck, 3.2 m.
+            var vessel = new Vector3(24f, 0f, 30f);
+            Solid("VesselHull", root, vessel + new Vector3(0f, 1.6f, 0f), new Vector3(4.4f, 3.2f, 14f), red, solids);
+            var vesselBow = Box("VesselBow", root, vessel + new Vector3(0f, 1.6f, -7f), new Vector3(3.1f, 3.2f, 3.1f), red);
+            vesselBow.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            solids.Add(new Bounds(vessel + new Vector3(0f, 1.6f, -8f), new Vector3(2.4f, 3.2f, 2.2f)));
+            Box("VesselStripe", root, vessel + new Vector3(0f, 0.7f, 0f), new Vector3(4.46f, 0.3f, 14.06f), white);
+            Box("VesselDeck", root, vessel + new Vector3(0f, 3.22f, 0f), new Vector3(4.1f, 0.05f, 13.6f), deckMat);
+            Solid("VesselHouse", root, vessel + new Vector3(0f, 5.2f, 4.2f), new Vector3(3.8f, 3.6f, 4.2f), white, solids);
+            Box("VesselGlass", root, vessel + new Vector3(0f, 5.6f, 2.07f), new Vector3(3.2f, 0.8f, 0.05f), glass);
+            Box("VesselCrane", root, vessel + new Vector3(1.2f, 4.2f, -1.6f), new Vector3(0.3f, 2f, 0.3f), yellow);
+            Put(hex, "VesselFunnel", root, vessel + new Vector3(0f, 7.7f, 5.2f), new Vector3(1f, 1.8f, 1f), yellow);
+            spots[5] = Mark("Spot_Vessel", root, vessel + new Vector3(0f, 3.2f, -8.3f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // 6 — a navigation tower on a pile of rock, jumping east off its gallery, 14 m.
+            var navTower = new Vector3(-30f, 4f, 30f);
+            Put(LowPolyMeshes.Prism("NavTower", 8, 2.2f, 1.5f, 20f), "NavTower", root, navTower, Vector3.one, yellow);
+            Put(LowPolyMeshes.Prism("NavTowerBand", 8, 2.1f, 1.9f, 1.4f), "Band", root, navTower + new Vector3(0f, -2f, 0f), Vector3.one, white);
+            Put(LowPolyMeshes.Prism("NavGallery", 12, 3f, 3f, 0.3f), "Gallery", root, new Vector3(navTower.x, 13.85f, navTower.z), Vector3.one, steelDark);
+            Put(LowPolyMeshes.Prism("NavLamp", 8, 1f, 1f, 1.5f), "Lamp", root, new Vector3(navTower.x, 14.8f, navTower.z), Vector3.one, lit);
+            Put(cone, "NavCap", root, new Vector3(navTower.x, 16.2f, navTower.z), new Vector3(2.2f, 1.2f, 2.2f), red);
+            Put(LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13), "NavRock", root, navTower + new Vector3(0f, -8f, 0f), new Vector3(9f, 5f, 8f), steelDark);
+            solids.Add(new Bounds(navTower + new Vector3(0f, -6f, 0f), new Vector3(7f, 4f, 6.4f)));
+            solids.Add(new Bounds(navTower + new Vector3(0f, 0f, 0f), new Vector3(3f, 16f, 3f)));
+            solids.Add(new Bounds(new Vector3(navTower.x, 13.85f, navTower.z), new Vector3(6f, 0.3f, 6f)));
+            spots[6] = Mark("Spot_NavTower", root, new Vector3(navTower.x + 2.6f, 14f, navTower.z));
+            spots[6].localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, -1f, 1f, 1f, 1f, 1f }, new[] { 0f, -2.5f, -2.5f, -2.5f, -2.5f, -2.5f, -2.5f });
             SeaGulls(site, new Vector3(0f, 0f, 12f));
             site.position = SiteOffsets[7];
 

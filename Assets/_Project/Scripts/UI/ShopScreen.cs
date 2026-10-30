@@ -41,7 +41,9 @@ namespace JumpGame
 
         public void Hide() => panel.Show(false, true);
 
-        void Close()
+        public bool IsOpen => panel.Visible;
+
+        public void Close()
         {
             panel.Show(false);
             titlePanel.Show(true);

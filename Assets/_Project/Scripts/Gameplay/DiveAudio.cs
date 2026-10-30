@@ -42,7 +42,6 @@ namespace JumpGame
                 Sounds.Play(Cue.Creak, 0.5f + diver.LeanDanger * 0.5f, 0.9f + diver.LeanDanger * 0.3f);
                 nextCreak = Time.time + 0.65f;
             }
-            Sounds.Ambience(diver.AcceptInput ? 0.3f : 0.14f);
         }
 
         void OnCrouched() => Sounds.Play(Cue.Tuck, 0.5f);
@@ -60,7 +59,6 @@ namespace JumpGame
             float size = Splash.SizeFor(r.entry) * diver.Perk.splash;
             var cue = size < 0.55f ? Cue.SplashSmall : size < 1.3f ? Cue.SplashMedium : Cue.SplashBig;
             Sounds.Play(cue, Mathf.Clamp(0.55f + size * 0.3f, 0.5f, 1f), Mathf.Lerp(1.08f, 0.9f, Mathf.Clamp01(size / 2f)));
-            StartCoroutine(After(0.2f, () => Sounds.Play(Cue.Bubbles, 0.6f)));
 
             if (r.Failed) Sounds.Play(Cue.Fail, 0.6f);
             if (r.Failed && diver.Perk.failScore > 0) StartCoroutine(After(0.15f, () => Sounds.Play(Cue.Slime, 0.7f)));

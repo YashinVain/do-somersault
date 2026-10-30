@@ -655,6 +655,7 @@ namespace JumpGame.EditorTools
             Link(map, "diveCam", cam);
             Link(map, "hud", hudUi);
             Link(map, "curtain", curtain);
+            Link(map, "shop", shop);
             Link(map, "menuButton", ui.menuButton);
             Link(map, "titlePanel", titlePanel);
             Link(map, "playButton", play);

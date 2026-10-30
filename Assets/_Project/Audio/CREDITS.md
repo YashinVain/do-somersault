@@ -10,3 +10,4 @@
 | Effects | 50 RPG sound effects | Kenney (kenney.nl) | https://opengameart.org/content/50-rpg-sound-effects |
 
 Лицензия CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+| Water (peludo_splash) | Water Splash and sand footsteps | Peludo | https://opengameart.org/content/water-splash-and-sand-footsteps |

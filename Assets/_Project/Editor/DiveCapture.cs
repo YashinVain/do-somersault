@@ -191,68 +191,68 @@ namespace JumpGame.EditorTools
 
             CaptureLevels();
 
-            flow.Load(2);
+            flow.Load(4);
             CaptureUi("Logs/capture_ui_ready.png", null);
 
             var scenarios = new[]
             {
                 new Scenario
                 {
-                    name = "good", level = 2,
+                    name = "good", level = 4,
                     held = t => t < 1.0f || (t > 1.12f && t < 1.95f),
                     frames = new[] { 0.95f, 1.3f, 1.6f, 1.9f, 2.2f, 2.5f, 2.6f, 2.7f, 2.85f, 3.0f, 3.3f, 3.7f }
                 },
                 new Scenario
                 {
-                    name = "slip", level = 2,
+                    name = "slip", level = 4,
                     held = t => t < 3.5f,
                     frames = new[] { 0.9f, 1.2f, 1.35f, 1.45f, 1.55f, 1.65f, 1.75f, 1.9f, 2.05f, 2.2f, 2.35f, 2.6f }
                 },
                 new Scenario
                 {
-                    name = "flop", level = 4,
+                    name = "flop", level = 6,
                     held = t => t < 0.8f,
                     frames = new[] { 1.8f, 2.0f, 2.1f, 2.2f, 2.3f, 2.4f, 2.5f, 2.7f, 2.9f, 3.2f, 3.6f, 4.0f }
                 },
                 new Scenario
                 {
-                    name = "lake", level = 7,
+                    name = "lake", level = 11,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
                     frames = new[] { 0.9f, 1.3f, 1.6f, 1.9f, 2.2f, 2.5f, 2.7f, 2.9f, 3.1f, 3.3f, 3.6f, 4.0f }
                 },
                 new Scenario
                 {
-                    name = "fat", level = 2, skin = 2,
+                    name = "fat", level = 4, skin = 2,
                     held = t => t < 0.9f || (t > 1.02f && t < 1.9f),
                     frames = new[] { 1.8f, 2.0f, 2.2f, 2.4f, 2.5f, 2.6f, 2.7f, 2.8f, 3.0f, 3.2f, 3.5f, 3.9f }
                 },
                 new Scenario
                 {
-                    name = "robot", level = 2, skin = 9,
+                    name = "robot", level = 4, skin = 9,
                     held = t => t < 0.9f,
                     frames = new[] { 1.4f, 1.6f, 1.7f, 1.8f, 1.9f, 2.0f, 2.1f, 2.3f, 2.5f, 2.8f, 3.2f, 3.8f }
                 },
                 new Scenario
                 {
-                    name = "aqueduct", level = 9,
+                    name = "aqueduct", level = 13,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
                     frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
                 },
                 new Scenario
                 {
-                    name = "roof", level = 12,
+                    name = "roof", level = 17,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.0f),
                     frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
                 },
                 new Scenario
                 {
-                    name = "yacht", level = 10,
+                    name = "yacht", level = 14,
                     held = t => t < 0.8f,
                     frames = new[] { 0.5f, 0.9f, 1.2f, 1.5f, 1.8f, 2.1f, 2.4f, 2.7f, 3.0f, 3.3f, 3.6f, 4.0f }
                 },
                 new Scenario
                 {
-                    name = "cliff", level = 13,
+                    name = "cliff", level = 19,
                     held = t => t < 1.05f || (t > 1.17f && t < 2.6f),
                     frames = new[] { 0.9f, 1.4f, 1.8f, 2.2f, 2.6f, 3.0f, 3.3f, 3.6f, 3.8f, 4.0f, 4.3f, 4.7f }
                 }
@@ -267,7 +267,7 @@ namespace JumpGame.EditorTools
             flow.SelectSkin(0);
 
             // Find any dive that lands in the very centre, then film it to check the close-up.
-            flow.Load(2);
+            flow.Load(4);
             float bh = -1f, bt = 0f;
             for (float h = 0.5f; h <= 1.3f && bh < 0f; h += 0.02f)
                 for (float d = 0f; d <= 1.6f; d += 0.04f)
@@ -280,13 +280,13 @@ namespace JumpGame.EditorTools
             if (bh > 0f)
                 RunScenario(new Scenario
                 {
-                    name = "bullseye", level = 2,
+                    name = "bullseye", level = 4,
                     held = t => t < bh || (bt > 0f && t > bh + 0.1f && t < bh + 0.1f + bt),
                     frames = new[] { 2.2f, 2.4f, 2.5f, 2.6f, 2.7f, 2.8f, 3.0f, 3.2f, 3.5f, 3.8f, 4.2f, 4.8f }
                 });
 
             // HUD mid-flight with a turn popup, then the result screen.
-            flow.Load(2);
+            flow.Load(4);
             lastOutcome = null;
             Simulate(scenarios[0].held, 2.0f, false);
             var shown = popups.GetComponentsInChildren<Text>(false);
@@ -381,12 +381,12 @@ namespace JumpGame.EditorTools
             for (int loc = 0; loc < flow.LocationCount; loc++)
             {
                 var list = flow.LevelsIn(loc);
-                var sheet = new Texture2D(w * 2, h * 3, TextureFormat.RGB24, false);
+                var sheet = new Texture2D(w * 2, h * 4, TextureFormat.RGB24, false);
                 for (int i = 0; i < list.Count; i++)
                 {
                     flow.Load(list[i]);
                     follow.Snap();
-                    Render(w, h, sheet, (i % 2) * w, (2 - i / 2) * h);
+                    Render(w, h, sheet, (i % 2) * w, (3 - i / 2) * h);
                 }
                 File.WriteAllBytes($"Logs/capture_loc_{loc}.png", sheet.EncodeToPNG());
                 UnityEngine.Object.DestroyImmediate(sheet);

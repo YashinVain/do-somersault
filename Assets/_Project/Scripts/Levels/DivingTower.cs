@@ -19,6 +19,19 @@ namespace JumpGame
         public Transform Edge(int i) => edges[Mathf.Clamp(i, 0, edges.Length - 1)];
         public float Height(int i) => Edge(i).position.y;
 
+        // True when the point is inside any solid part, or within margin of one.
+        public bool Contains(Vector3 world, float margin)
+        {
+            Vector3 p = world - transform.position;
+            foreach (var b in solids)
+            {
+                var grown = b;
+                grown.Expand(margin * 2f);
+                if (grown.Contains(p)) return true;
+            }
+            return false;
+        }
+
         // Deepest overlap of a point with the tower: how far to push it out and in which direction.
         public bool Penetration(Vector3 world, out Vector3 normal, out float depth)
         {

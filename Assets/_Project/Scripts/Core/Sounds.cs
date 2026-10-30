@@ -29,7 +29,6 @@ namespace JumpGame
         const int Voices = 12;
 
         [SerializeField] CueClips[] cues;
-        [SerializeField] AudioClip ambience;
 
         static Sounds instance;
         static bool? muted;
@@ -37,9 +36,7 @@ namespace JumpGame
         readonly Dictionary<Cue, CueClips> table = new Dictionary<Cue, CueClips>();
         readonly Dictionary<Cue, int> last = new Dictionary<Cue, int>();
         AudioSource[] voices;
-        AudioSource loop;
         int next;
-        float ambienceTarget = 0.15f;
 
         public static bool Muted
         {
@@ -69,13 +66,6 @@ namespace JumpGame
                 voices[i].playOnAwake = false;
             }
 
-            loop = gameObject.AddComponent<AudioSource>();
-            loop.clip = ambience;
-            loop.loop = true;
-            loop.volume = 0f;
-            loop.playOnAwake = false;
-            if (ambience != null) loop.Play();
-
             AudioListener.volume = Muted ? 0f : 1f;
         }
 
@@ -89,20 +79,9 @@ namespace JumpGame
 
         void OnApplicationPause(bool paused) => AudioListener.pause = paused;
 
-        void Update()
-        {
-            if (loop != null) loop.volume = Mathf.MoveTowards(loop.volume, ambienceTarget, Time.unscaledDeltaTime * 0.3f);
-        }
-
         public static void Play(Cue cue, float volume = 1f, float pitch = 1f)
         {
             if (instance != null) instance.PlayCue(cue, volume, pitch);
-        }
-
-        // 0 is silent; the bed of water under every screen is quiet on menus and louder in a dive.
-        public static void Ambience(float volume)
-        {
-            if (instance != null) instance.ambienceTarget = volume;
         }
 
         void PlayCue(Cue cue, float volume, float pitch)

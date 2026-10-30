@@ -14,6 +14,7 @@ namespace JumpGame
         [SerializeField] DiveCamera diveCam;
         [SerializeField] UiPanel hud;
         [SerializeField] ScreenCurtain curtain;
+        [SerializeField] ShopScreen shop;
         [SerializeField] Button menuButton;
 
         [Header("Title")]
@@ -150,6 +151,7 @@ namespace JumpGame
         {
             if (!flow.IsOpen(flow.Index)) return;
             open = false;
+            summaryPanel.Show(false, true);
             mapPanel.Show(false);
             titlePanel.Show(false, true);
             arrows.gameObject.SetActive(false);
@@ -401,8 +403,34 @@ namespace JumpGame
             jumpButton.interactable = levelOpen;
         }
 
+        // Escape steps back one screen: summary, shop, map, and out of a dive to the map.
+        void HandleBack()
+        {
+            if (curtain != null && curtain.Busy) return;
+            if (summaryPanel.Visible)
+            {
+                Sounds.Play(Cue.Back);
+                summaryPanel.Show(false);
+            }
+            else if (shop != null && shop.IsOpen)
+            {
+                Sounds.Play(Cue.Back);
+                shop.Close();
+            }
+            else if (!open)
+            {
+                ShowMap();
+            }
+            else if (mode == Mode.Map)
+            {
+                Sounds.Play(Cue.Back);
+                BackToTitle();
+            }
+        }
+
         void Update()
         {
+            if (Input.GetKeyDown(KeyCode.Escape)) HandleBack();
             if (!open) return;
             time += Time.unscaledDeltaTime;
 

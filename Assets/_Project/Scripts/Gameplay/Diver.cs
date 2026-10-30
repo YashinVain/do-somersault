@@ -266,6 +266,8 @@ namespace JumpGame
             pose.ContactPoints(contacts);
             float inertia = pose.Inertia(localCom);
             float omega = Spin * Mathf.Deg2Rad;
+            // The somersault turns round the platform's own sideways axis, whichever way the platform faces.
+            Vector3 axis = startRotation * Vector3.right;
             bool touching = false;
 
             foreach (var p in contacts)
@@ -276,7 +278,7 @@ namespace JumpGame
 
                 // Velocity of this point: the centre of mass plus the spin around the somersault (x) axis.
                 Vector3 r = p - com;
-                var arm = new Vector3(0f, -r.z, r.y);
+                Vector3 arm = Vector3.Cross(axis, r);
                 Vector3 vp = velocity + arm * omega;
                 float vn = Vector3.Dot(vp, n);
                 if (vn >= 0f) continue;

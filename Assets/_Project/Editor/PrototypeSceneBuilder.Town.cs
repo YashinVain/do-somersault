@@ -26,7 +26,7 @@ namespace JumpGame.EditorTools
 
             var root = Child("Town", site);
             var solids = new List<Bounds>();
-            var spots = new Transform[5];
+            var spots = new Transform[7];
 
             const float quayTop = 0.9f, quayEdge = -3f, front = -4.2f;
             Solid("Quay", root, new Vector3(0f, (quayTop - 6f) * 0.5f, (quayEdge - 30f) * 0.5f), new Vector3(SeaBlockSize, quayTop + 6f, 27f), stone, solids);
@@ -63,7 +63,7 @@ namespace JumpGame.EditorTools
 
             // 0 — the quay steps, 0.9 m, with stairs going down into the canal.
             for (int i = 0; i < 4; i++)
-                Box("Step", root, new Vector3(-34f, quayTop - 0.3f - i * 0.3f, quayEdge + 0.35f + i * 0.5f), new Vector3(3f, 0.3f, 0.7f), stoneDark);
+                Solid("Step", root, new Vector3(-34f, quayTop - 0.3f - i * 0.3f, quayEdge + 0.35f + i * 0.5f), new Vector3(3f, 0.3f, 0.7f), stoneDark, solids);
             spots[0] = Mark("Spot_Steps", root, new Vector3(-34f, quayTop, quayEdge));
 
             // 1 — a stone footbridge on an arch between two piers, 5 m.
@@ -83,6 +83,13 @@ namespace JumpGame.EditorTools
             {
                 var ramp = Box("BridgeRamp", root, new Vector3(s * 9.9f, 2.95f, 1.5f), new Vector3(6.6f, 0.4f, 3.2f), stoneDark);
                 ramp.localRotation = Quaternion.Euler(0f, 0f, -s * 38f);
+                // The ramp is solid underneath: a few steps down to the pier.
+                for (int k = 0; k < 4; k++)
+                {
+                    float xa = 7.6f + k * 1.3f, xb = xa + 1.3f;
+                    float top = 5f - (xb - 7.3f) * (4.1f / 5.2f);
+                    solids.Add(new Bounds(new Vector3(s * (xa + xb) * 0.5f, (quayTop + top) * 0.5f, 1.5f), new Vector3(1.3f, top - quayTop, 3.2f)));
+                }
             }
             spots[1] = Mark("Spot_Bridge", root, new Vector3(0f, 5f, 3.1f));
 
@@ -167,7 +174,58 @@ namespace JumpGame.EditorTools
             foreach (var (px, pz) in new[] { (-26f, 4f), (-18f, 9f), (14f, 12f) })
                 Put(shard, "Stone", root, new Vector3(px, -0.3f, pz), new Vector3(1.4f, 0.8f, 1.4f), stoneDark);
 
-            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f }, new[] { -3f, -3f, -3f, -3f, -3f });
+            // The far bank of the canal: a second quay with houses facing back, and two more places to jump from.
+            const float farEdge = 48f, farFront = 51f;
+            Solid("FarQuay", root, new Vector3(0f, (quayTop - 6f) * 0.5f, (farEdge + 60f) * 0.5f), new Vector3(SeaBlockSize, quayTop + 6f, 60f - farEdge), stone, solids);
+            Box("FarQuayCap", root, new Vector3(0f, quayTop - 0.04f, farEdge - 0.08f), new Vector3(SeaBlockSize, 0.12f, 0.4f), stoneDark);
+            (float x, float w, float h, int c)[] farHouses =
+            {
+                (-40f, 8f, 9f, 3), (-31f, 7f, 11f, 0), (-23f, 8f, 8f, 5), (-14f, 9f, 12f, 1), (-5f, 7f, 9f, 2),
+                (4f, 8f, 11f, 4), (13f, 7f, 8f, 0), (33f, 8f, 10f, 3), (41f, 6f, 9f, 5)
+            };
+            foreach (var (x, w, h, c) in farHouses)
+            {
+                Solid("FarHouse", root, new Vector3(x, quayTop + h * 0.5f, farFront + 4.5f), new Vector3(w, h, 9f), plaster[c], solids);
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    var slope = Box("Roof", root, new Vector3(x, quayTop + h + 0.85f, farFront + 4.5f + s * 2.2f), new Vector3(w + 0.8f, 0.3f, 5.4f), roofTile);
+                    slope.localRotation = Quaternion.Euler(-s * 26f, 0f, 0f);
+                }
+                for (float fy = 2.5f; fy < h - 1.5f; fy += 3f)
+                    for (float wx = -w * 0.5f + 1.6f; wx < w * 0.5f - 0.8f; wx += 2.4f)
+                        Box("Window", root, new Vector3(x + wx, quayTop + fy, farFront - 0.03f), new Vector3(0.9f, 1.4f, 0.07f), glassMat);
+            }
+            var plasterFar = plaster[5];
+
+            // 5 — a balcony on the far bank, 7 m.
+            float fbx = -14f;
+            Solid("FarBalcony", root, new Vector3(fbx, 6.875f, farFront - 1.2f), new Vector3(4f, 0.25f, 2.4f), stone, solids);
+            foreach (float s in new[] { -1f, 1f })
+                Box("FarBalconyRail", root, new Vector3(fbx + s * 1.9f, 7.5f, farFront - 1.2f), new Vector3(0.06f, 0.06f, 2.3f), Mat("Town_Iron", "#2D3138"));
+            Box("FarBalconyRail", root, new Vector3(fbx - 1f, 7.5f, farFront - 2.35f), new Vector3(1.8f, 0.06f, 0.06f), Mat("Town_Iron", "#2D3138"));
+            Box("FarBalconyRail", root, new Vector3(fbx + 1.3f, 7.5f, farFront - 2.35f), new Vector3(1.4f, 0.06f, 0.06f), Mat("Town_Iron", "#2D3138"));
+            Box("FarBalconyDoor", root, new Vector3(fbx, 8f, farFront - 0.04f), new Vector3(1.1f, 2f, 0.08f), wood);
+            spots[5] = Mark("Spot_FarBalcony", root, new Vector3(fbx, 7f, farFront - 2.4f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // 6 — the balcony of a clock tower, 18 m.
+            float cxt = 24f;
+            Solid("ClockTower", root, new Vector3(cxt, quayTop + 13f, farFront + 2.5f), new Vector3(5f, 26f, 5f), plaster[2], solids);
+            Box("ClockFace", root, new Vector3(cxt, quayTop + 22f, farFront - 0.04f), new Vector3(2.6f, 2.6f, 0.08f), Mat("Town_ClockFace", "#F4F1E8"));
+            Box("ClockHandA", root, new Vector3(cxt, quayTop + 22.3f, farFront - 0.1f), new Vector3(0.12f, 1f, 0.05f), Mat("Town_Iron", "#2D3138"));
+            Box("ClockHandB", root, new Vector3(cxt + 0.4f, quayTop + 22f, farFront - 0.1f), new Vector3(0.8f, 0.12f, 0.05f), Mat("Town_Iron", "#2D3138"));
+            Box("ClockBand", root, new Vector3(cxt, quayTop + 25.2f, farFront + 2.5f), new Vector3(5.4f, 0.4f, 5.4f), stone);
+            var clockRoof = Put(LowPolyMeshes.Prism("ClockRoof", 4, 3.9f, 0f, 5f), "ClockRoof", root, new Vector3(cxt, quayTop + 28f, farFront + 2.5f), Vector3.one, roofTile);
+            clockRoof.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            for (float y = 2f; y < 17f; y += 3f)
+                Box("TowerWindow", root, new Vector3(cxt, quayTop + y, farFront - 0.03f), new Vector3(0.7f, 1.4f, 0.07f), glassMat);
+            Solid("ClockBalcony", root, new Vector3(cxt, 17.875f, farFront - 1.2f), new Vector3(3.6f, 0.25f, 2.4f), stone, solids);
+            foreach (float s in new[] { -1f, 1f })
+                Box("ClockRail", root, new Vector3(cxt + s * 1.7f, 18.5f, farFront - 1.2f), new Vector3(0.06f, 0.06f, 2.3f), Mat("Town_Iron", "#2D3138"));
+            spots[6] = Mark("Spot_ClockTower", root, new Vector3(cxt, 18f, farFront - 2.4f));
+            spots[6].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { -3f, -3f, -3f, -3f, -3f, -3f, -3f });
             SeaGulls(site, new Vector3(0f, 0f, 12f));
             site.position = SiteOffsets[5];
 

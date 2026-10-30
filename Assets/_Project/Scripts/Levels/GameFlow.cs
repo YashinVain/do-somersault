@@ -219,6 +219,7 @@ namespace JumpGame
         public event Action<DiveOutcome> Finished;
 
         bool subscribed;
+        bool hadSpot;
 
         void Start()
         {
@@ -274,7 +275,7 @@ namespace JumpGame
 
             Vector3 center = edge.position + edge.forward * level.zoneDistance;
             center.y = zone.WaterLevel;
-            zone.Configure(center, level.zoneRadius, level.zoneDrift);
+            zone.Configure(center, level.zoneRadius, level.zoneDrift, edge.forward);
 
             // Film from the outer side of the platform so the rest of the tower stays behind the diver.
             // Measured inside the location, since the blocks themselves stand far apart along X.
@@ -282,7 +283,14 @@ namespace JumpGame
             if (side == 0f) side = site.transform.InverseTransformPoint(edge.position).x > 0.1f ? -1f : 1f;
             cam.SetSide(side);
             cam.SetLean(site.Tower.CameraLean(level.platform));
-            cam.Snap();
+            cam.SetHeading(edge.eulerAngles.y);
+            cam.SetObstacles(site.Tower);
+
+            // Moving between spots in play glides the camera over; the first placement and editor tools just snap.
+            bool glide = Application.isPlaying && cam.enabled && hadSpot;
+            if (glide) cam.BlendFromCurrent();
+            else cam.Snap();
+            hadSpot = true;
 
             progress.last = current;
             LevelChanged?.Invoke();

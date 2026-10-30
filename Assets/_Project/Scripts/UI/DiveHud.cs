@@ -32,6 +32,7 @@ namespace JumpGame
         [SerializeField] Text resultTask;
         [SerializeField] Text resultCoins;
         [SerializeField] Text coinCounter;
+        [SerializeField] Button restartButton;
         [SerializeField] Button retryButton, nextLevelButton;
         [SerializeField] float resultDelay = 0.9f;
 
@@ -74,6 +75,7 @@ namespace JumpGame
             prevButton.onClick.AddListener(flow.Back);
             nextButton.onClick.AddListener(flow.Next);
             retryButton.onClick.AddListener(flow.Retry);
+            restartButton.onClick.AddListener(flow.Retry);
             nextLevelButton.onClick.AddListener(OnNextPressed);
             resultPanel.gameObject.SetActive(false);
             RefreshLevel();
@@ -121,6 +123,7 @@ namespace JumpGame
             bool standing = diver.Current == Diver.State.Ready;
             prevButton.gameObject.SetActive(standing && flow.CanGoBack);
             nextButton.gameObject.SetActive(standing && flow.CanGoNext);
+            restartButton.gameObject.SetActive(!standing);
         }
 
         void OnFinished(DiveOutcome o)

@@ -25,7 +25,7 @@ namespace JumpGame.EditorTools
 
             var root = Child("Ice", site);
             var solids = new List<Bounds>();
-            var spots = new Transform[5];
+            var spots = new Transform[7];
             float half = SeaBlockSize * 0.5f;
 
             // The glacier: a faceted wall with a snow cap running back.
@@ -38,11 +38,7 @@ namespace JumpGame.EditorTools
                 Box("End", root, new Vector3(side * (half - 0.3f), (GlacierTop - 6f) * 0.5f, (zf + GlacierBack) * 0.5f), new Vector3(0.6f, GlacierTop + 6f, zf - GlacierBack), iceB);
             }
             Box("Back", root, new Vector3(0f, (GlacierTop - 6f) * 0.5f, GlacierBack + 0.3f), new Vector3(SeaBlockSize, GlacierTop + 6f, 0.6f), iceB);
-            for (float x = -half; x < half - 0.1f; x += 7.5f)
-            {
-                float front = Mathf.Min(GlacierFaceZ(x), GlacierFaceZ(x + 3.75f), GlacierFaceZ(x + 7.5f)) - 0.6f;
-                solids.Add(new Bounds(new Vector3(x + 3.75f, (GlacierTop - 6f) * 0.5f, (front + GlacierBack) * 0.5f), new Vector3(7.5f, GlacierTop + 6f, front - GlacierBack)));
-            }
+            WallSolids(wallMesh, solids, SeaBlockSize, 24, 10, -6f, GlacierTop, GlacierBack);
 
             // Snow pines on top of the glacier.
             var needles = Mat("SnowPine", "#CFE0DA");
@@ -60,7 +56,7 @@ namespace JumpGame.EditorTools
             foreach (float side in new[] { -1f, 1f })
             {
                 float sx = side * 39f;
-                Box("Shelf", root, new Vector3(sx, (0.7f - 6f) * 0.5f, 2.5f), new Vector3(12f, 6.7f, 11f), snow);
+                Solid("Shelf", root, new Vector3(sx, (0.7f - 6f) * 0.5f, 2.5f), new Vector3(12f, 6.7f, 11f), snow, solids);
             }
 
             // 0 — an ice floe, 0.6 m, with a few penguins on it.
@@ -87,7 +83,7 @@ namespace JumpGame.EditorTools
             var white = Mat("Breaker_White", "#EDEBE4");
             var glass = Mat("Breaker_Glass", "#27394B", smoothness: 0.9f);
             var deckGrey = Mat("Breaker_Deck", "#6C7680");
-            var b0 = new Vector3(-12f, 0f, 9f);
+            var b0 = new Vector3(-19f, 0f, 9f);
             Box("BreakerHull", root, b0 + new Vector3(0f, 1.55f, 0f), new Vector3(4.8f, 3.4f, 15f), hullRed);
             var bow = Box("BreakerBow", root, b0 + new Vector3(0f, 1.55f, 7.5f), new Vector3(3.4f, 3.4f, 3.4f), hullRed);
             bow.localRotation = Quaternion.Euler(0f, 45f, 0f);
@@ -104,18 +100,21 @@ namespace JumpGame.EditorTools
             Put(hex, "BreakerFunnelBand", root, b0 + new Vector3(0f, 9.6f, -5.2f), new Vector3(1.16f, 0.4f, 1.16f), white);
             solids.Add(new Bounds(b0 + new Vector3(0f, 1.55f, 0.3f), new Vector3(4.8f, 3.4f, 16f)));
             solids.Add(new Bounds(b0 + new Vector3(0f, 8f, -2.4f), new Vector3(4.4f, 2.2f, 3.2f)));
+            solids.Add(new Bounds(b0 + new Vector3(0f, 1.55f, 8.3f), new Vector3(2.6f, 3.4f, 2.2f)));
+            solids.Add(new Bounds(b0 + new Vector3(0f, 1.55f, 9.6f), new Vector3(1.2f, 3.4f, 1.0f)));
             spots[1] = Mark("Spot_Icebreaker", root, b0 + new Vector3(0f, 3.3f, 8.5f));
 
             // 2 — an iceberg with a flat top, 8 m.
-            var berg = new Vector3(6f, 0.5f, 8f);
+            var berg = new Vector3(-5f, 0.5f, 8f);
             var bergMesh = LowPolyMeshes.Prism("Iceberg", 8, 6.6f, 4.3f, 15f);
             var bergT = Put(bergMesh, "Iceberg", root, berg, Vector3.one, iceA);
             bergT.localRotation = Quaternion.Euler(0f, 22.5f, 0f);
             Put(shard, "BergPeak", root, berg + new Vector3(-1.4f, 7.8f, -1.2f), new Vector3(3.4f, 3.4f, 3f), iceB);
             Put(shard, "BergSpur", root, berg + new Vector3(3.6f, 2.2f, -2.4f), new Vector3(4.4f, 5.6f, 4.4f), iceC);
             Put(shard, "BergFoot", root, berg + new Vector3(-3.6f, -0.2f, 3.2f), new Vector3(4.6f, 3.4f, 4.2f), iceB);
-            solids.Add(new Bounds(berg, new Vector3(8.6f, 15f, 8.6f)));
-            spots[2] = Mark("Spot_Iceberg", root, new Vector3(6f, 8f, 8f + 4.3f * 0.924f - 0.15f));
+            // The berg is wider under the water; follow the slope in steps so a fall onto its side lands on ice.
+            TaperedSolids(solids, berg, -7f, 8f, 6f, 4.1f, 5);
+            spots[2] = Mark("Spot_Iceberg", root, new Vector3(berg.x, 8f, 8f + 4.3f * 0.924f - 0.15f));
 
             // 3 — a ledge in the glacier wall, 14 m.
             spots[3] = WallLedge(root, solids, "GlacierLedge", 18f, 14f, 2.9f, GlacierFaceZ(18f), iceA, iceB, shard);
@@ -136,7 +135,24 @@ namespace JumpGame.EditorTools
             Put(shard, "ArchSnow", root, new Vector3(30f, 20.2f, -1.6f), new Vector3(3.6f, 1.2f, 2.8f), snow);
             spots[4] = Mark("Spot_Arch", root, new Vector3(32f, 20f, 3.9f));
 
-            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -2.5f });
+            // 5 — a second, smaller iceberg far out, jumping back at the glacier, 5.5 m.
+            var berg2 = new Vector3(16f, 0.5f, 28f);
+            Put(LowPolyMeshes.Prism("IcebergSmall", 7, 4.6f, 3.1f, 12f), "IcebergSmall", root, berg2, Vector3.one, iceB);
+            Put(shard, "IcebergSmallPeak", root, berg2 + new Vector3(1.2f, 6.2f, 0.6f), new Vector3(2.6f, 3f, 2.4f), iceA);
+            TaperedSolids(solids, berg2, -5.5f, 5.5f, 4.5f, 3f, 4);
+            spots[5] = Mark("Spot_IcebergSmall", root, new Vector3(berg2.x, 5.5f, berg2.z - 2.7f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // 6 — a tall ice tower on the west side, jumping east, 16 m.
+            var tower2 = new Vector3(-30f, 5f, 26f);
+            Put(LowPolyMeshes.Prism("IceTower", 6, 3.8f, 2.6f, 22f), "IceTower", root, tower2, Vector3.one, iceC);
+            Put(shard, "IceTowerFoot", root, tower2 + new Vector3(-2.4f, -9f, 1f), new Vector3(6f, 3.4f, 5.4f), iceB);
+            Put(shard, "IceTowerCap", root, tower2 + new Vector3(0f, 11.1f, 0f), new Vector3(4.2f, 0.6f, 4f), snow);
+            TaperedSolids(solids, tower2, -6f, 16f, 3.7f, 2.5f, 5);
+            spots[6] = Mark("Spot_IceTower", root, new Vector3(tower2.x + 2.2f, 16f, tower2.z));
+            spots[6].localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 0f, -2.5f, -2.5f, -2.5f, -2.5f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 14f));
             site.position = SiteOffsets[4];
 

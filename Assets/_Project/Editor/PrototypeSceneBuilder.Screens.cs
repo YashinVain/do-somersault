@@ -71,21 +71,21 @@ namespace JumpGame.EditorTools
             var summaryRt = ui.Stretch("LocationSummary", ui.canvas);
             var dim = summaryRt.gameObject.AddComponent<Image>();
             dim.color = new Color(0.03f, 0.05f, 0.1f, 0.62f);
-            var card = Panel(ui, "Card", summaryRt, center, new Vector2(0f, 6f), new Vector2(780f, 590f), new Color(0.09f, 0.13f, 0.22f, 0.97f)).rectTransform;
+            var card = Panel(ui, "Card", summaryRt, center, new Vector2(0f, 6f), new Vector2(780f, 660f), new Color(0.09f, 0.13f, 0.22f, 0.97f)).rectTransform;
 
-            x.summaryTitle = Flat(ui, "Title", card, center, new Vector2(0f, 246f), new Vector2(720f, 60f), 42, TextAnchor.MiddleCenter, "#F4F1EA", FontStyle.Bold);
-            var bar = ui.Rect("Bar", card, center, new Vector2(0f, 206f), new Vector2(84f, 5f)).gameObject.AddComponent<Image>();
+            x.summaryTitle = Flat(ui, "Title", card, center, new Vector2(0f, 284f), new Vector2(720f, 60f), 42, TextAnchor.MiddleCenter, "#F4F1EA", FontStyle.Bold);
+            var bar = ui.Rect("Bar", card, center, new Vector2(0f, 244f), new Vector2(84f, 5f)).gameObject.AddComponent<Image>();
             bar.color = Hex("#EE6A55");
             bar.raycastTarget = false;
 
-            const int rows = 5;
+            const int rows = 8;
             x.rowLabels = new Text[rows];
             x.rowScores = new Text[rows];
             x.rowDots = new Image[rows * 3];
             var stagger = new System.Collections.Generic.List<RectTransform> { x.summaryTitle.rectTransform };
             for (int i = 0; i < rows; i++)
             {
-                var row = ui.Rect("Row_" + i, card, center, new Vector2(0f, 150f - i * 52f), new Vector2(660f, 44f));
+                var row = ui.Rect("Row_" + i, card, center, new Vector2(0f, 196f - i * 42f), new Vector2(660f, 40f));
                 x.rowLabels[i] = Flat(ui, "Label", row, center, new Vector2(-190f, 0f), new Vector2(280f, 40f), 28, TextAnchor.MiddleLeft, "#E6EBF0");
                 for (int d = 0; d < 3; d++)
                 {
@@ -98,13 +98,13 @@ namespace JumpGame.EditorTools
                 stagger.Add(row);
             }
 
-            x.summaryTotals = Flat(ui, "Totals", card, center, new Vector2(0f, -102f), new Vector2(720f, 40f), 30, TextAnchor.MiddleCenter, "#F4F1EA", FontStyle.Bold);
-            x.summaryCoins = Flat(ui, "Coins", card, center, new Vector2(0f, -144f), new Vector2(720f, 34f), 24, TextAnchor.MiddleCenter, "#FFD24A");
+            x.summaryTotals = Flat(ui, "Totals", card, center, new Vector2(0f, -152f), new Vector2(720f, 40f), 30, TextAnchor.MiddleCenter, "#F4F1EA", FontStyle.Bold);
+            x.summaryCoins = Flat(ui, "Coins", card, center, new Vector2(0f, -194f), new Vector2(720f, 34f), 24, TextAnchor.MiddleCenter, "#FFD24A");
             stagger.Add(x.summaryTotals.rectTransform);
             stagger.Add(x.summaryCoins.rectTransform);
 
-            x.summaryStay = ui.Btn("Stay", card, center, new Vector2(-190f, -226f), new Vector2(300f, 74f), "Остаться", "#2BA39C", 28);
-            x.summaryNext = ui.Btn("Next", card, center, new Vector2(170f, -226f), new Vector2(340f, 74f), "Следующая локация", "#EE6A55", 28);
+            x.summaryStay = ui.Btn("Stay", card, center, new Vector2(-190f, -266f), new Vector2(300f, 74f), "Остаться", "#2BA39C", 28);
+            x.summaryNext = ui.Btn("Next", card, center, new Vector2(170f, -266f), new Vector2(340f, 74f), "Следующая локация", "#EE6A55", 28);
             x.summaryNextLabel = x.summaryNext.GetComponentInChildren<Text>();
             stagger.Add((RectTransform)x.summaryStay.transform);
             stagger.Add((RectTransform)x.summaryNext.transform);

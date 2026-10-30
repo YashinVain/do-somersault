@@ -53,7 +53,7 @@ namespace JumpGame.EditorTools
 
             var solids = new List<Bounds>();
             var towerRoot = Child("Spots", site);
-            var spots = new Transform[5];
+            var spots = new Transform[7];
 
             // 0 — the jetty: a short wooden walkway out from the shore, 0.8 m.
             const float jettyX = -12f, jettyTop = 0.8f, jettyEnd = -7f;
@@ -144,6 +144,8 @@ namespace JumpGame.EditorTools
             var islet = new Vector3(-17f, 0f, -9f);
             Put(shard, "Islet", towerRoot, islet + new Vector3(0f, -0.6f, 0f), new Vector3(6f, 2.6f, 5.5f), rockMat);
             Put(rough, "IsletGrass", towerRoot, islet + new Vector3(0f, 0.25f, -0.4f), new Vector3(4.2f, 1.2f, 3.6f), Mat("LakeGrass", "#5E9A4E"));
+            solids.Add(new Bounds(islet + new Vector3(0f, -0.6f, 0f), new Vector3(5f, 2.6f, 4.6f)));
+            solids.Add(new Bounds(islet + new Vector3(0f, 0.2f, -0.4f), new Vector3(3.4f, 1.4f, 3f)));
             var trunkBase = islet + new Vector3(0f, 0.5f, -0.6f);
             var trunkTop = new Vector3(-17f, 6.6f, -4.6f);
             var trunk = Put(hex, "Trunk", towerRoot, (trunkBase + trunkTop) * 0.5f, new Vector3(0.7f, (trunkTop - trunkBase).magnitude, 0.7f), bark);
@@ -191,7 +193,31 @@ namespace JumpGame.EditorTools
             Put(shard, "Fallen", towerRoot, new Vector3(aqX + 2f, -0.8f, aqEnd + 4f), new Vector3(2.4f, 1.6f, 2.2f), stone);
             spots[4] = Mark("Spot_Aqueduct", towerRoot, new Vector3(aqX, aqTop, aqEnd));
 
-            var tower = MakeTower(towerRoot, spots, solids, new[] { -1f, -1f, -1f, -1f, 1f });
+            // 5 — a rowing boat out on the east side of the lake, jumping west, 0.5 m.
+            var rowboat = new Vector3(30f, 0.05f, 8f);
+            Box("RowboatHull", towerRoot, rowboat + new Vector3(0f, 0.1f, 0f), new Vector3(4.2f, 0.4f, 1.5f), woodDark);
+            Box("RowboatInside", towerRoot, rowboat + new Vector3(0f, 0.2f, 0f), new Vector3(3.9f, 0.3f, 1.2f), woodB);
+            foreach (float bz in new[] { -1f, 1f })
+            {
+                var tip = Box("RowboatBow", towerRoot, rowboat + new Vector3(bz * 2.2f, 0.12f, 0f), new Vector3(1.05f, 0.4f, 1.05f), woodDark);
+                tip.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            }
+            Box("RowboatSeat", towerRoot, rowboat + new Vector3(0.3f, 0.34f, 0f), new Vector3(0.35f, 0.06f, 1.3f), woodA);
+            Box("Oar", towerRoot, rowboat + new Vector3(0.3f, 0.5f, 1.1f), new Vector3(0.05f, 0.05f, 2.4f), woodA);
+            solids.Add(new Bounds(rowboat + new Vector3(0f, 0.1f, 0f), new Vector3(4.2f, 0.5f, 1.5f)));
+            spots[5] = Mark("Spot_Rowboat", towerRoot, rowboat + new Vector3(-1.9f, 0.3f, 0f));
+            spots[5].localRotation = Quaternion.Euler(0f, -90f, 0f);
+
+            // 6 — a boulder standing in the water by the north shore, jumping south, 6 m.
+            var boulder = new Vector3(8f, 1f, 25f);
+            Put(LowPolyMeshes.Prism("LakeBoulder", 7, 3.6f, 2.5f, 10f), "Boulder", towerRoot, boulder, Vector3.one, rockMat);
+            Put(shard, "BoulderChunk", towerRoot, boulder + new Vector3(2.2f, -3.2f, 1.4f), new Vector3(3.4f, 2.4f, 3f), rockMat);
+            Put(rough, "BoulderMoss", towerRoot, boulder + new Vector3(0f, 5.1f, 0.4f), new Vector3(3.6f, 0.6f, 3.2f), Mat("LakeGrass", "#5E9A4E"));
+            TaperedSolids(solids, boulder, -4f, 6f, 3.5f, 2.35f, 4);
+            spots[6] = Mark("Spot_Boulder", towerRoot, new Vector3(boulder.x, 6f, boulder.z - 2.3f));
+            spots[6].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            var tower = MakeTower(towerRoot, spots, solids, new[] { -1f, -1f, -1f, -1f, 1f, 1f, 1f });
 
             LakeShore(site);
             LakeLife(site);
@@ -311,11 +337,7 @@ namespace JumpGame.EditorTools
 
             var solids = new List<Bounds>();
             // The wall as a row of boxes that follow the face, kept just behind the rock surface.
-            for (float x = -half; x < half - 0.1f; x += 7.5f)
-            {
-                float front = Mathf.Min(CliffFaceZ(x), CliffFaceZ(x + 3.75f), CliffFaceZ(x + 7.5f)) - 0.6f;
-                solids.Add(new Bounds(new Vector3(x + 3.75f, (CliffTop - 6f) * 0.5f, (front + CliffBack) * 0.5f), new Vector3(7.5f, CliffTop + 6f, front - CliffBack)));
-            }
+            WallSolids(wallMesh, solids, SeaBlockSize, 24, 9, -6f, CliffTop, CliffBack);
 
             for (int k = 0; k < 9; k++)
             {
@@ -324,7 +346,7 @@ namespace JumpGame.EditorTools
                 Put(shard, "Fallen", cliff, new Vector3(x, R(-0.6f, 0.2f), CliffFaceZ(x) + R(0.6f, 1.6f)), new Vector3(R(1.6f, 2.8f), R(1.2f, 2f), R(1.6f, 2.4f)), rockMats[rng.Next(3)]);
             }
 
-            var spots = new Transform[5];
+            var spots = new Transform[7];
             Transform Ledge(string n, float x, float h, float reach)
             {
                 float face = CliffFaceZ(x), edge = face + reach, backZ = face - 2.5f;
@@ -335,6 +357,7 @@ namespace JumpGame.EditorTools
                 Put(shard, n + "_Under", cliff, new Vector3(x, h - 1.6f, face + reach * 0.35f), new Vector3(3.2f, 2.6f, reach + 1.2f), rockMats[0]);
                 Box(n + "_Chalk", cliff, new Vector3(x, h + 0.005f, edge - 0.1f), new Vector3(2.4f, 0.01f, 0.12f), chalk);
                 solids.Add(new Bounds(c, s));
+                solids.Add(new Bounds(new Vector3(x, h - 1.7f, face + reach * 0.4f), new Vector3(2.6f, 2.2f, reach * 0.8f + 0.6f)));
                 return Mark("Spot_" + n, cliff, new Vector3(x, h, edge));
             }
 
@@ -367,6 +390,7 @@ namespace JumpGame.EditorTools
             }
             solids.Add(new Bounds(y0 + new Vector3(0f, 1.35f, 0.2f), new Vector3(3.6f, 3.3f, 12.4f)));
             solids.Add(new Bounds(y0 + new Vector3(-0.2f, 3.8f, -1.5f), new Vector3(2.4f, 1.6f, 5f)));
+            solids.Add(new Bounds(y0 + new Vector3(0f, 1.35f, 7.05f), new Vector3(1.5f, 3.3f, 1.5f)));
             spots[0] = Mark("Spot_Yacht", site, y0 + new Vector3(0f, 3f, 7.2f));
 
             spots[1] = Ledge("Ledge_8", -8f, 8f, 2.9f);
@@ -420,13 +444,33 @@ namespace JumpGame.EditorTools
                 float a = Mathf.Deg2Rad * (200f + k * 17.5f);
                 Put(hex, "RailPost", cliff, lh + new Vector3(Mathf.Cos(a) * 2.2f, 18.5f, Mathf.Sin(a) * 2.2f), new Vector3(0.05f, 1f, 0.05f), white);
             }
-            solids.Add(new Bounds(lh + new Vector3(0f, 0f, 0f), new Vector3(7f, 5f, 6f)));
+            solids.Add(new Bounds(lh + new Vector3(0f, 0.2f, 0f), new Vector3(7.8f, 6.4f, 6.8f)));
             solids.Add(new Bounds(lh + new Vector3(0f, 9.5f, 0f), new Vector3(2.8f, 17f, 2.8f)));
             solids.Add(new Bounds(lh + new Vector3(0f, 17.85f, 0f), new Vector3(4.6f, 0.3f, 4.6f)));
             solids.Add(new Bounds(lh + new Vector3(0f, 18.8f, 0f), new Vector3(2f, 1.6f, 2f)));
             spots[4] = Mark("Spot_Lighthouse", cliff, lh + new Vector3(0f, 18f, 2.3f));
 
-            var tower = MakeTower(cliff, spots, solids, new[] { -1f, 1f, 1f, 1f, -1f });
+            // 5 — a sea stack out in the water, jumping back towards the cliff, 7 m.
+            var stackA = new Vector3(12f, 0.5f, 30f);
+            Put(LowPolyMeshes.Prism("SeaStackA", 7, 4.4f, 2.9f, 13f), "SeaStack", cliff, stackA, Vector3.one, rockMats[2]);
+            Put(shard, "SeaStackChunk", cliff, stackA + new Vector3(-2.6f, -5.4f, 1f), new Vector3(4f, 3f, 3.6f), rockMats[1]);
+            Put(shard, "SeaStackCap", cliff, stackA + new Vector3(0f, 6.1f, 0.2f), new Vector3(4.6f, 0.5f, 4.4f), grassTop);
+            TaperedSolids(solids, stackA, -6f, 7f, 4.2f, 2.75f, 4);
+            spots[5] = Mark("Spot_StackA", cliff, new Vector3(stackA.x, 7f, stackA.z - 2.55f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+            Palm(cliff, new Vector3(stackA.x + 0.6f, 7f, stackA.z + 0.6f), 0.8f, 40f);
+
+            // 6 — a tall sea stack on the west side, jumping east, 12 m.
+            var stackB = new Vector3(-32f, 3f, 24f);
+            Put(LowPolyMeshes.Prism("SeaStackB", 8, 5.4f, 3.5f, 18f), "SeaStack", cliff, stackB, Vector3.one, rockMats[0]);
+            Put(shard, "SeaStackChunk", cliff, stackB + new Vector3(3.4f, -7f, -1.2f), new Vector3(5f, 4f, 4.2f), rockMats[2]);
+            Put(shard, "SeaStackCap", cliff, stackB + new Vector3(0f, 9.1f, 0f), new Vector3(5.4f, 0.6f, 5.2f), grassTop);
+            TaperedSolids(solids, stackB, -6f, 12f, 5.2f, 3.4f, 5);
+            spots[6] = Mark("Spot_StackB", cliff, new Vector3(stackB.x + 3.1f, 12f, stackB.z));
+            spots[6].localRotation = Quaternion.Euler(0f, 90f, 0f);
+            Put(cone, "StackBird", cliff, new Vector3(stackB.x - 1f, 12.4f, stackB.z + 1f), new Vector3(0.3f, 0.5f, 0.3f), Mat("Gull_White", "#F4F4F0"));
+
+            var tower = MakeTower(cliff, spots, solids, new[] { -1f, 1f, 1f, 1f, -1f, 1f, 1f }, new[] { -2.5f, -2.5f, -2.5f, -2.5f, -2.5f, 0f, 0f });
 
             // Small beaches at both ends of the cliff foot, for the crabs.
             foreach (float side in new[] { -1f, 1f })

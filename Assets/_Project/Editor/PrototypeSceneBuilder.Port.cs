@@ -27,8 +27,9 @@ namespace JumpGame.EditorTools
             };
 
             var root = Child("Port", site);
+            var shard = LowPolyMeshes.Icosphere("Shard", 0, 0.5f, 0.28f, 13);
             var solids = new List<Bounds>();
-            var spots = new Transform[5];
+            var spots = new Transform[7];
             float half = SeaBlockSize * 0.5f;
 
             // Quay: a concrete apron along the back of the block, its front edge at z = -3.
@@ -83,6 +84,7 @@ namespace JumpGame.EditorTools
             Put(hex, "FunnelBand", root, t0 + new Vector3(0f, 5.4f, -2.2f), new Vector3(1.06f, 0.4f, 1.06f), red);
             solids.Add(new Bounds(t0 + new Vector3(0f, 1.3f, 0f), new Vector3(4.2f, 2.6f, 10.4f)));
             solids.Add(new Bounds(t0 + new Vector3(0f, 4.4f, -2.2f), new Vector3(1.1f, 3.2f, 1.1f)));
+            solids.Add(new Bounds(t0 + new Vector3(0f, 1.3f, 6.2f), new Vector3(2f, 2.6f, 1.8f)));
             spots[1] = Mark("Spot_Tug", root, t0 + new Vector3(0f, 4.9f, 3.4f));
 
             // 2 — a stack of containers on the quay, three high; dive off the top one, 9 m.
@@ -145,7 +147,33 @@ namespace JumpGame.EditorTools
             foreach (float rz in new[] { -8f, -14f })
                 Box("CraneRail", root, new Vector3(cx, quayTop + 0.05f, rz), new Vector3(SeaBlockSize * 0.4f, 0.1f, 0.2f), steelGrey);
 
-            var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -2.5f });
+            // 5 — a flat barge out in the harbour, jumping back at the quay, 2.2 m.
+            var bg = new Vector3(-4f, 0f, 28f);
+            Solid("BargeHull", root, bg + new Vector3(0f, 0.9f, 0f), new Vector3(9f, 2.2f, 4.4f), hullBlack, solids);
+            Box("BargeRim", root, bg + new Vector3(0f, 2.05f, 0f), new Vector3(9.3f, 0.2f, 4.7f), hullRed);
+            Box("BargeStripe", root, bg + new Vector3(0f, 1.1f, 2.22f), new Vector3(9f, 0.25f, 0.05f), steel);
+            for (int k = 0; k < 3; k++)
+                Solid("BargeCrate", root, bg + new Vector3(-2.6f + k * 2.6f, 3.35f, 0.9f), new Vector3(2.2f, 2.2f, 2.2f), cont[(k * 2 + 1) % cont.Length], solids);
+            Box("BargeLamp", root, bg + new Vector3(3.8f, 2.4f, -1.9f), new Vector3(0.14f, 0.9f, 0.14f), steelGrey);
+            Put(Smooth, "BargeLight", root, bg + new Vector3(3.8f, 2.95f, -1.9f), Vector3.one * 0.3f, red);
+            spots[5] = Mark("Spot_Barge", root, bg + new Vector3(0f, 2.15f, -1.8f));
+            spots[5].localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // 6 — a harbour light on the end of the breakwater, jumping west, 12 m.
+            var bc = new Vector3(34f, 0f, 32f);
+            Put(shard, "BreakwaterRock", root, bc + new Vector3(0f, -0.4f, 0f), new Vector3(10f, 3.6f, 10f), concreteDark);
+            Put(LowPolyMeshes.Prism("HarbourLight", 8, 1.7f, 1.25f, 20f), "HarbourLight", root, bc + new Vector3(0f, 4f, 0f), Vector3.one, white);
+            Put(LowPolyMeshes.Prism("HarbourLightBand", 8, 1.62f, 1.55f, 1.8f), "Band", root, bc + new Vector3(0f, 6f, 0f), Vector3.one, red);
+            Put(LowPolyMeshes.Prism("HarbourGallery", 12, 2.9f, 2.9f, 0.3f), "Gallery", root, bc + new Vector3(0f, 11.85f, 0f), Vector3.one, steelGrey);
+            Put(LowPolyMeshes.Prism("HarbourLamp", 8, 0.9f, 0.9f, 1.4f), "Lamp", root, bc + new Vector3(0f, 12.7f, 0f), Vector3.one, lit);
+            Put(cone, "HarbourCap", root, bc + new Vector3(0f, 13.9f, 0f), new Vector3(2f, 1.1f, 2f), red);
+            solids.Add(new Bounds(bc + new Vector3(0f, 1f, 0f), new Vector3(9f, 6f, 9f)));
+            solids.Add(new Bounds(bc + new Vector3(0f, 4f, 0f), new Vector3(2.8f, 16f, 2.8f)));
+            solids.Add(new Bounds(bc + new Vector3(0f, 11.85f, 0f), new Vector3(5.6f, 0.3f, 5.6f)));
+            spots[6] = Mark("Spot_Harbour", root, bc + new Vector3(-2.3f, 12f, 0f));
+            spots[6].localRotation = Quaternion.Euler(0f, -90f, 0f);
+
+            var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -2.5f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 10f));
             site.position = SiteOffsets[3];
 

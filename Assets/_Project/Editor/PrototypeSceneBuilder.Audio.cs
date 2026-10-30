@@ -20,6 +20,15 @@ namespace JumpGame.EditorTools
                 .Where(c => c != null && c.name.StartsWith(prefix))
                 .OrderBy(c => c.length).ToArray();
 
+        static AudioClip[] Custom(Cue cue)
+        {
+            if (!AssetDatabase.IsValidFolder(AudioDir + "/Custom")) return new AudioClip[0];
+            return AssetDatabase.FindAssets("t:AudioClip", new[] { AudioDir + "/Custom" })
+                .Select(g => AssetDatabase.LoadAssetAtPath<AudioClip>(AssetDatabase.GUIDToAssetPath(g)))
+                .Where(c => c != null && c.name.StartsWith(cue.ToString(), System.StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+
         static void BuildSounds(Diver diver, GameFlow flow)
         {
             var splashes = ByLength("Water", "splash_");
@@ -46,7 +55,7 @@ namespace JumpGame.EditorTools
                 (Cue.Creak, Clips("Effects", "creak1", "creak2", "creak3"), 0.6f, 0.9f, 1.1f),
                 (Cue.Tuck, Clips("Effects", "cloth1", "cloth2", "cloth3", "cloth4"), 0.45f, 1f, 1.15f),
                 (Cue.Turn, Clips("Interface", "pluck_001", "pluck_002"), 0.5f, 1f, 1f),
-                (Cue.SplashSmall, splashes.Take(third).ToArray(), 0.8f, 0.95f, 1.1f),
+                (Cue.SplashSmall, Clips("Water", "peludo_splash1", "peludo_splash2").Concat(splashes.Take(third / 2)).ToArray(), 0.8f, 0.95f, 1.1f),
                 (Cue.SplashMedium, splashes.Skip(third).Take(third).ToArray(), 0.9f, 0.95f, 1.05f),
                 (Cue.SplashBig, splashes.Skip(third * 2).ToArray(), 1f, 0.92f, 1.04f),
                 (Cue.Bubbles, Clips("Water", "bubble_01", "bubble_02", "bubble_03"), 0.5f, 0.95f, 1.1f),
@@ -57,6 +66,13 @@ namespace JumpGame.EditorTools
                 (Cue.Medal2, jingles.Skip(Mathf.Min(8, jingles.Length - 1)).Take(1).ToArray(), 0.7f, 1f, 1f),
                 (Cue.Medal3, jingles.Skip(Mathf.Max(0, jingles.Length - 1)).Take(1).ToArray(), 0.75f, 1f, 1f)
             };
+
+            // Anything the author drops into Audio/Custom wins: files named after a cue (SplashBig_1.mp3, Coins.wav) replace its clips.
+            for (int i = 0; i < cues.Length; i++)
+            {
+                var own = Custom(cues[i].cue);
+                if (own.Length > 0) cues[i].clips = own;
+            }
 
             var go = new GameObject("Sounds");
             var sounds = go.AddComponent<Sounds>();
@@ -73,7 +89,6 @@ namespace JumpGame.EditorTools
                 e.FindPropertyRelative("volume").floatValue = cues[i].volume;
                 e.FindPropertyRelative("pitch").vector2Value = new Vector2(cues[i].pitchMin, cues[i].pitchMax);
             }
-            so.FindProperty("ambience").objectReferenceValue = Clips("Water", "loop_water_01").FirstOrDefault();
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var audio = flow.gameObject.AddComponent<DiveAudio>();

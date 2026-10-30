@@ -17,6 +17,8 @@ namespace JumpGame
         float alpha;
         Action atCover;
 
+        public bool Busy => phase != Phase.Idle;
+
         void Prepare()
         {
             if (group == null) group = GetComponent<CanvasGroup>();
