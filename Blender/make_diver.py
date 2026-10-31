@@ -97,25 +97,27 @@ def weights(kind, p):
 
 
 def fat(kind, p):
-    """The 'Fat' shape key: a rounder middle, wider arms and legs (authored as +50 % width)."""
+    """The 'Fat' shape key: a really heavy body. A big round belly, thick arms and thighs, wide hips and a rounder face."""
     x, y, z = p
     base = kind.split(':')[0]
     if base in ('torso', 'trunks', 'shirt'):
-        bump = math.exp(-((y - 0.1) / 0.24) ** 2)
-        belly = 0.05 * bump if z > 0 else 0.0
-        return (x * (1 + 0.5 * bump), y, z * (1 + 0.8 * bump) + belly)
+        bump = math.exp(-((y - 0.2) / 0.32) ** 2)
+        chest = math.exp(-((y - 0.42) / 0.16) ** 2)
+        belly = 0.13 * bump if z > -0.02 else 0.04 * bump
+        return (x * (1 + 0.95 * bump + 0.25 * chest), y, z * (1 + 1.25 * bump + 0.3 * chest) + belly)
     if base == 'trunksleg':
-        return (x * 1.45, y, z * 1.25)
+        return (x * 1.75 + (0.04 if x > 0 else -0.04), y, z * 1.55)
     if base in ('arm', 'hand'):
         ax = (-1 if x < 0 else 1) * 0.235
-        return (ax * 1.45 + (x - ax) * 1.25, y, z * 1.25)
+        return (ax * 1.55 + (x - ax) * 1.6, y, z * 1.6)
     if base in ('leg', 'thigh', 'shin', 'foot'):
         ax = (-1 if x < 0 else 1) * 0.1
-        return (ax * 1.5 + (x - ax) * 1.3, y, z * 1.2)
+        k = 1.0 + 0.7 * math.exp(-((y + 0.15) / 0.4) ** 2)          # thicker at the thigh than at the ankle
+        return (ax * 1.9 + (x - ax) * k * 1.15, y, z * (1 + 0.55 * math.exp(-((y + 0.15) / 0.4) ** 2)))
     if base == 'ring':
-        return (x * 1.5, y, z * 1.38)
-    if base == 'head':
-        return (x * 1.06, y, z)
+        return (x * 2.0, y, z * 1.95)
+    if base in ('head', 'neck'):
+        return (x * 1.22, y, z * 1.06)
     return (x, y, z)
 
 

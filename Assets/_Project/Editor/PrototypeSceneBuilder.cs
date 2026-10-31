@@ -1204,6 +1204,9 @@ namespace JumpGame.EditorTools
 
         static Material Mat(string name, string hex, float smoothness = 0.08f, bool transparent = false, float alpha = 1f, string shader = "Standard")
         {
+            // Opaque materials all use the game's own surface shader (see PrototypeSceneBuilder.Look.cs), the sea its own water shader.
+            if (shader == "Standard" && transparent && IsWater(name)) shader = WaterShader;
+            else if (shader == "Standard" && !transparent) shader = SurfaceShader;
             string path = $"{MaterialDir}/{name}.mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (mat == null || mat.shader.name != shader)
@@ -1213,7 +1216,18 @@ namespace JumpGame.EditorTools
                 AssetDatabase.CreateAsset(mat, path);
             }
 
-            if (shader == "Standard")
+            if (shader == SurfaceShader)
+            {
+                var c = Hex(hex);
+                c.a = 1f;
+                mat.color = c;
+                ApplyLook(mat, name, smoothness);
+            }
+            else if (shader == WaterShader)
+            {
+                ApplyWater(mat, hex, alpha, smoothness);
+            }
+            else if (shader == "Standard")
             {
                 var c = Hex(hex);
                 c.a = alpha;

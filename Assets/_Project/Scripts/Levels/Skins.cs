@@ -55,6 +55,9 @@ namespace JumpGame
         public Perk perk = Perk.None;
         [Tooltip("Name of the authored model in DiverModel; empty is the shared human model.")]
         public string model;
+        [Tooltip("How tall the authored model stands, 1 is the grown-up swimmer; a child is smaller with a bigger head.")]
+        public float height = 1f;
+        public float headScale = 1f;
     }
 
     // Placeholders built from colours and a few props until the Blender models arrive.
@@ -69,14 +72,14 @@ namespace JumpGame
         static CharacterSkin Make(string title, string blurb, int price, string skin, string outfit, Gear gear,
                                   string face = null, string cap = "#FFC743", string strap = "#1E2A4A", string lens = "#2A2A30",
                                   string shirt = "#F4F1EA", string hair = "#3A2A20", string accent = "#C8553D",
-                                  float width = 1f, bool metallic = false, Perk perk = null, string model = null)
+                                  float width = 1f, bool metallic = false, Perk perk = null, string model = null, float height = 1f, float headScale = 1f)
         {
             return new CharacterSkin
             {
                 title = title, blurb = blurb, price = price,
                 skin = C(skin), face = C(face ?? skin), outfit = C(outfit), cap = C(cap), strap = C(strap), lens = C(lens),
                 shirt = C(shirt), hair = C(hair), accent = C(accent), gear = gear, width = width, metallic = metallic,
-                perk = perk ?? Perk.None, model = model
+                perk = perk ?? Perk.None, model = model, height = height, headScale = headScale
             };
         }
 
@@ -86,10 +89,10 @@ namespace JumpGame
                  lens: "#7FD3F0",
                  perk: new Perk { title = "Чистая работа", text = "+50 очков за чистый вход головой", headClean = 50 }),
             Make("Школьник", "Портфель не оставил даже на вышке.", 150, "#F2C6A5", "#2E3A56", Gear.Hair | Gear.Shirt | Gear.Backpack | Gear.Eyes,
-                 hair: "#3A2A20", shirt: "#F4F1EA", accent: "#C8553D",
+                 hair: "#3A2A20", shirt: "#F4F1EA", accent: "#C8553D", height: 0.82f, headScale: 1.16f,
                  perk: new Perk { title = "Карманные деньги", text = "Портфель тянет вниз, зато монет на 25% больше", gravity = 1.1f, coins = 1.25f }),
             Make("Толстяк", "Весит много, плюхает громко. Круг на всякий случай.", 200, "#EDB28F", "#E4572E", Gear.SwimRing | Gear.Sunglasses,
-                 accent: "#35B6A8", strap: "#22252B", width: 1.34f,
+                 accent: "#35B6A8", strap: "#22252B", width: 1.34f, height: 0.94f,
                  perk: new Perk { title = "Плюх", text = "Огромные брызги и волны, бомбочка ×1,5. Крутится медленнее", splash = 2.2f, cannonball = 1.5f, spin = 0.85f, jump = 0.93f }),
             Make("Дед", "Прыгает с вышки с 1962 года и не собирается останавливаться.", 250, "#E2AE92", "#2C8C7A", Gear.Hair | Gear.Beard | Gear.Shirt | Gear.Eyes,
                  hair: "#EDEDED", shirt: "#9CC3D8", width: 1.08f,

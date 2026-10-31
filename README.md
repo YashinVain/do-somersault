@@ -96,6 +96,8 @@ Assets/_Project/
 ├── Audio/                        звуки CC0 (OpenGameArt) и CREDITS.md с источниками
 ├── Fonts/                        шрифт Inter (SIL OFL) с кириллицей: в браузере нет системных шрифтов
 ├── Models/                       FBX из Blender: Characters (герои) и Props (деревья, камни, скалы, дома)
+├── Textures/                     бесшовные рисованные текстуры из Blender: цвет и нормали, вода, пена
+├── Shaders/                      Surface.shader (все твёрдые материалы) и Water.shader (вода с рябью и пеной)
 ├── Materials/Prototype/          материалы, создаются сборщиком сцены
 └── Meshes/Generated/             меши, создаются сборщиком сцены
 

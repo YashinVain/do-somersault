@@ -56,7 +56,7 @@ namespace JumpGame.EditorTools
         {
             PrototypeSceneBuilder.Build();
             Open();
-            CapturePoses(new[] { 0, 2, 6, 7 }, "Logs/capture_poses.png");
+            CapturePoses(new[] { 0, 1, 2, 9 }, "Logs/capture_poses.png");
         }
 
         public static void CapturePoses(int[] skinsToShow, string path)
@@ -71,11 +71,13 @@ namespace JumpGame.EditorTools
                 var shots = new System.Collections.Generic.List<float[]>
                 {
                     // seconds to run, held while running
-                    new[] { 0.05f, 0f }, new[] { 0.7f, 1f }, new[] { 0.35f, 0f }, new[] { 0.35f, 1f }, new[] { 0.35f, 0f }
+                    new[] { 0.05f, 0f }, new[] { 0.36f, 1f }, new[] { 0.3f, 0f }, new[] { 0.35f, 0f }, new[] { 0.45f, 1f }
                 };
                 for (int col = 0; col < shots.Count; col++)
                 {
                     for (float s = 0f; s < shots[col][0]; s += Dt) diver.Step(Dt, shots[col][1] > 0.5f);
+                    var mdl = diver.GetComponent<DiverModel>();
+                    if (mdl != null) { mdl.Sync(0f); Debug.Log($"POSE skin {skinsToShow[row]} col {col}: {diver.Current} " + mdl.DebugState()); }
                     Vector3 mid = diver.transform.position;
                     Vector3 side = diver.transform.right * 2.6f;
                     cam.transform.SetPositionAndRotation(mid + side + Vector3.up * 0.1f, Quaternion.LookRotation(-side));

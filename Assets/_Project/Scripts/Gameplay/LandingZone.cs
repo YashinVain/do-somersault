@@ -38,20 +38,8 @@ namespace JumpGame
         [SerializeField] float contactHeight = 0.35f;
         [SerializeField] float idleBob = 0.012f;
 
-        [Header("Waves")]
-        [SerializeField] float waveSpeed = 2.2f;
-        [SerializeField] float waveWidth = 0.35f;
-        [SerializeField] float waveDecay = 1.1f;
-
-        struct Wave
-        {
-            public Vector3 origin;
-            public float start, amplitude;
-        }
-
         Vector3[] rest, offset, velocity;
         Quaternion[] restRotation;
-        readonly List<Wave> waves = new List<Wave>();
         float time;
 
         public float WaterLevel => transform.position.y;
@@ -76,7 +64,7 @@ namespace JumpGame
             drift = newDrift;
             transform.position = center;
             radius = newRadius;
-            waves.Clear();
+            WaterMotion.Clear();
 
             if (floats != null)
                 foreach (var f in floats)
@@ -141,7 +129,6 @@ namespace JumpGame
             if (rest == null) Init();
             if (dt <= 0f) return;
             time += dt;
-            waves.RemoveAll(w => time - w.start > 4f);
 
             if (drift > 0f)
                 transform.position = anchor + axis * (Mathf.Sin(time * Mathf.PI * 2f / driftPeriod) * drift);
@@ -161,7 +148,7 @@ namespace JumpGame
                 offset[i].y = Mathf.Clamp(offset[i].y, -0.3f, 0.3f);
 
                 Vector3 world = transform.position + rest[i];
-                float wave = WaveHeight(world) + WaterMotion.Height(world);
+                float wave = WaterMotion.Height(world);
                 float bob = Mathf.Sin(time * 1.7f + i * 0.6f) * idleBob;
 
                 floats[i].localPosition = rest[i] + offset[i] + Vector3.up * (wave + bob);
@@ -172,21 +159,6 @@ namespace JumpGame
 
             if (centerMark != null)
                 centerMark.localPosition = new Vector3(0f, 0.012f + WaterMotion.Height(transform.position), 0f);
-        }
-
-        float WaveHeight(Vector3 at)
-        {
-            float h = 0f;
-            foreach (var w in waves)
-            {
-                float age = time - w.start;
-                Vector3 d = at - w.origin;
-                d.y = 0f;
-                float x = (d.magnitude - waveSpeed * age) / waveWidth;
-                if (x * x > 16f) continue;
-                h += w.amplitude * Mathf.Exp(-waveDecay * age) * Mathf.Exp(-x * x) * Mathf.Cos(x * 1.6f);
-            }
-            return h;
         }
 
         // Body points pushing into the rope. Returns true if anything was touched.
@@ -224,7 +196,7 @@ namespace JumpGame
         public void MakeWave(Vector3 origin, float size)
         {
             if (rest == null) Init();
-            waves.Add(new Wave { origin = origin, start = time, amplitude = 0.04f + size * 0.07f });
+            WaterMotion.AddImpact(origin, size);   // the ring wave itself lives in the water, so the surface and the buoys agree
 
             float reach = 0.8f + size * 0.6f;
             for (int i = 0; i < floats.Length; i++)

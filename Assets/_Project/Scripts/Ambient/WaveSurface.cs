@@ -58,6 +58,7 @@ namespace JumpGame
 
         void Update()
         {
+            WaterMotion.Tick();
             if (!visible || WaterMotion.Amplitude <= 0f) return;
             Refresh();
             mesh.RecalculateNormals();
