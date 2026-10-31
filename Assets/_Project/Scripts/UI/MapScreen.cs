@@ -81,7 +81,7 @@ namespace JumpGame
             buyButton.onClick.AddListener(BuyHere);
             backButton.onClick.AddListener(BackToTitle);
             summaryNext.onClick.AddListener(GoToNextLocation);
-            summaryStay.onClick.AddListener(() => summaryPanel.Show(false));
+            summaryStay.onClick.AddListener(CloseSummary);
             flow.SummaryRequested += ShowSummary;
             flow.CoinsChanged += RefreshCoins;
             summaryPanel.Show(false, true);
@@ -245,7 +245,7 @@ namespace JumpGame
             if (next < 0) summaryNextLabel.text = "К карте";
             else summaryNextLabel.text = flow.IsPaid(next) && !flow.Owns(next) ? "Дальше" : "Следующая локация";
             Sounds.Play(Cue.Open);
-            summaryPanel.Show(true);
+            OpenSummary();
         }
 
         // Dip the curtain over the swap to the map, then let the camera fly from this location to the next.
@@ -254,6 +254,7 @@ namespace JumpGame
             int from = flow.Level.location, next = flow.NextLocation;
             Sounds.Play(Cue.Whoosh);
             summaryPanel.Show(false);
+            mapWasShown = false;
             void Swap()
             {
                 resume = -1;
@@ -359,6 +360,7 @@ namespace JumpGame
             }
 
             locationName.text = flow.LocationName(viewing);
+            FitHeader();
             int medals = 0;
             foreach (int l in levels) medals += saved.stars[l];
             locationInfo.text = $"Медали: {medals} из {levels.Count * 3}";
@@ -412,6 +414,46 @@ namespace JumpGame
             jumpButton.interactable = levelOpen;
         }
 
+        Vector2 nameHome, infoHome;
+        bool homesKnown;
+
+        // On a narrow screen (a tablet, a phone held at a slant) the name would run under the Menu and Sound buttons:
+        // it drops to its own row below them instead of sharing the top one.
+        void FitHeader()
+        {
+            var canvas = locationName.canvas != null ? locationName.canvas.transform as RectTransform : null;
+            if (canvas == null || canvas.rect.width < 1f) return;
+            if (!homesKnown)
+            {
+                nameHome = locationName.rectTransform.anchoredPosition;
+                infoHome = locationInfo.rectTransform.anchoredPosition;
+                homesKnown = true;
+            }
+            float room = canvas.rect.width - 2f * 380f;                       // what is left between the buttons and the coins
+            float need = locationName.preferredWidth;
+            bool drop = need > room;
+            // Dropped: the small medal line takes the top row between the buttons, the big name goes under it, clear of the 3D markers.
+            locationInfo.rectTransform.anchoredPosition = drop ? nameHome + new Vector2(0f, 8f) : infoHome;
+            locationName.rectTransform.anchoredPosition = drop ? infoHome + new Vector2(0f, -22f) : nameHome;
+        }
+
+        // The summary has its own panel: the map's header and card behind it only get in the way.
+        bool mapWasShown;
+
+        void OpenSummary()
+        {
+            mapWasShown = mapPanel.Visible;
+            mapPanel.Show(false);
+            summaryPanel.Show(true);
+        }
+
+        void CloseSummary()
+        {
+            summaryPanel.Show(false);
+            if (mapWasShown && mode == Mode.Map) mapPanel.Show(true);
+            mapWasShown = false;
+        }
+
         // Escape steps back one screen: summary, shop, map, and out of a dive to the map.
         void HandleBack()
         {
@@ -419,7 +461,7 @@ namespace JumpGame
             if (summaryPanel.Visible)
             {
                 Sounds.Play(Cue.Back);
-                summaryPanel.Show(false);
+                CloseSummary();
             }
             else if (board != null && board.IsOpen)
             {

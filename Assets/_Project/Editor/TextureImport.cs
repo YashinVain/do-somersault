@@ -6,7 +6,7 @@ namespace JumpGame.EditorTools
     // They tile, they are shown at an angle (hence the anisotropy) and Crunch keeps the WebGL download small.
     public class TextureImport : AssetPostprocessor
     {
-        public override uint GetVersion() => 2;
+        public override uint GetVersion() => 3;
 
         void OnPreprocessTexture()
         {
@@ -24,8 +24,8 @@ namespace JumpGame.EditorTools
             t.mipmapEnabled = true;
             t.maxTextureSize = 1024;
             t.textureCompression = TextureImporterCompression.CompressedHQ;
-            t.crunchedCompression = true;
-            t.compressionQuality = 70;
+            t.crunchedCompression = false;   // Crunch smears fine detail: the textures are small enough to ship as they are
+            t.compressionQuality = 100;
             t.alphaSource = TextureImporterAlphaSource.None;
         }
     }

@@ -35,7 +35,7 @@ Material:
     m_Floats:
     - _BumpScale: 0
     - _Detail: 0
-    - _Glossiness: 0.8
+    - _Glossiness: 0.08
     - _Metallic: 0
     - _MossAmount: 0
     - _Rim: 0.08

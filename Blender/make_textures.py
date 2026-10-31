@@ -332,8 +332,8 @@ def blur(a, passes):
 
 def paint(c, h, name):
     # a brush leaves no pixel noise: soften, match the mean to mid grey and tame the contrast
-    c = blur(c, 1)
-    h = blur(h, 1)
+    c = blur(c, 0)
+    h = blur(h, 0)
     c = 0.5 + (c - c.mean()) * CONTRAST[name]
     return np.clip(c, 0.05, 0.95), h
 
@@ -353,18 +353,18 @@ for fn in FAMILIES:
 # ------------------------------------------------------------------ water: two ripple normal maps, a foam pattern and caustics
 
 def water():
+    """Calm water: broad rolling swells, no sharp ridges, so the light slides over it instead of sparkling."""
     n = 512
-    for idx, (seed, fx, fy) in enumerate([(201, 6, 5), (211, 9, 11)]):
-        h = 0.55 * fbm(n, fx, fy, 5, seed, 0.55) + 0.45 * np.abs(2 * fbm(n, fx * 2, fy * 2, 3, seed + 50) - 1)
-        save('water', normal_map(h, 3.2 if idx == 0 else 2.2), 'n' + str(idx + 1))
-    f1, f2, _ = voronoi(n, 14, 14, 221, 1.0)
-    bubbles = remap(0.5 - f1, 0.0, 0.5) * (0.6 + 0.4 * fbm(n, 12, 12, 3, 222))
-    foam = np.clip(bubbles * 1.3 + remap(fbm(n, 8, 8, 4, 223), 0.55, 1.0) * 0.6, 0, 1)
+    swell = fbm(n, 3, 3, 3, 201, 0.4) + 0.5 * fbm(n, 2, 4, 2, 202, 0.4)
+    save('water', normal_map(swell, 2.0), 'n1')
+    chop = fbm(n, 6, 5, 3, 211, 0.35)
+    save('water', normal_map(chop, 1.1), 'n2')
+    f1, f2, _ = voronoi(n, 10, 10, 221, 1.0)
+    bubbles = remap(0.5 - f1, 0.0, 0.5) * (0.65 + 0.35 * fbm(n, 9, 9, 3, 222))
+    foam = np.clip(bubbles * 1.2 + remap(fbm(n, 6, 6, 4, 223), 0.55, 1.0) * 0.5, 0, 1)
     save('foam', np.stack([foam, foam, foam], axis=-1), 'a')
-    caustic = remap(f2 - f1, 0.0, 0.5)
-    caustic = (1 - caustic) ** 3
-    caustic = np.clip(caustic * 1.6 * (0.7 + 0.3 * fbm(n, 5, 5, 3, 231)), 0, 1)
-    save('caustics', np.stack([caustic, caustic, caustic], axis=-1), 'a')
+    soft = np.clip(fbm(n, 4, 4, 3, 231), 0, 1)
+    save('caustics', np.stack([soft, soft, soft], axis=-1), 'a')
     print('texture water, foam, caustics')
 
 

@@ -19,7 +19,7 @@ namespace JumpGame.EditorTools
             var iceB = Mat("Ice_B", "#B3D3E5", smoothness: 0.5f);
             var iceC = Mat("Ice_C", "#8DB9D2", smoothness: 0.5f);
             var snow = Mat("Snow", "#F3F8FA", smoothness: 0.2f);
-            var shard = RockMesh;
+            var shard = IceMesh;
             var rng = new System.Random(8);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 
@@ -177,6 +177,11 @@ namespace JumpGame.EditorTools
             var p = Mark("Penguin", parent, at);
             p.localRotation = Quaternion.Euler(0f, yaw, 0f);
             p.localScale = Vector3.one * scale * 1.3f;
+            if (Prop("Structures", "Penguin", p, Vector3.zero, Vector3.one, 0f, StructureSlots(("Penguin_Black", black), ("Penguin_White", white), ("Penguin_Orange", orange))) != null)
+            {
+                AddSway(p, Vector3.forward, 3f, 0.9f, yaw * 0.05f);
+                return;
+            }
             Put(Smooth, "Body", p, new Vector3(0f, 0.45f, 0f), new Vector3(0.5f, 0.9f, 0.42f), black);
             Put(Smooth, "Belly", p, new Vector3(0f, 0.42f, 0.07f), new Vector3(0.38f, 0.7f, 0.32f), white);
             Put(Smooth, "Head", p, new Vector3(0f, 0.98f, 0.02f), new Vector3(0.3f, 0.3f, 0.3f), black);

@@ -115,8 +115,12 @@ def _axis_point(axis, t, a, b):
     return (t, a, b)  # axis 'x'
 
 
+def _spow(v, e):
+    return math.copysign(abs(v) ** e, v)
+
+
 def tube(profile, axis='y', sides=12, dome0=0, dome1=0, depth0=None, depth1=None,
-         mat='Skin', kind='torso', closed=True):
+         mat='Skin', kind='torso', closed=True, power=2.0):
     """A body of rings along an axis. profile rows: (t, rx, rz, ox, oz) or (t, rx, rz).
     dome0/dome1 round the ends with that many extra rings; closed=False leaves the ends open (belts, bands)."""
     rows = [tuple(r) + (0.0,) * (5 - len(r)) for r in profile]
@@ -147,7 +151,7 @@ def tube(profile, axis='y', sides=12, dome0=0, dome1=0, depth0=None, depth1=None
     for (t, rx, rz, ox, oz) in rings:
         for j in range(sides):
             ang = 2 * math.pi * j / sides
-            verts.append(_axis_point(axis, t, ox + rx * math.cos(ang), oz + rz * math.sin(ang)))
+            verts.append(_axis_point(axis, t, ox + rx * _spow(math.cos(ang), 2.0 / power), oz + rz * _spow(math.sin(ang), 2.0 / power)))
     n = len(rings)
     for i in range(n - 1):
         for j in range(sides):

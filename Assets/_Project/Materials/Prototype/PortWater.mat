@@ -41,11 +41,12 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BumpScale: 0.55
+    - _BumpScale: 0.5
+    - _CausticStrength: 0
     - _Emission: 0
-    - _Flow: 0.03
-    - _Glossiness: 0.85
-    - _Scale: 0.11
+    - _Flow: 0.012
+    - _Glossiness: 0.62
+    - _Scale: 0.045
     m_Colors:
     - _Color: {r: 0.08235294, g: 0.3137255, b: 0.47843137, a: 0.71999997}
     - _DeepColor: {r: 0.023509787, g: 0.1419238, b: 0.26313725, a: 1}

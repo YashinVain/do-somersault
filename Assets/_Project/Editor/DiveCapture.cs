@@ -609,6 +609,7 @@ namespace JumpGame.EditorTools
                 flow.Load(flow.LevelsIn(0)[1]);
                 map.Preview(1);
                 CaptureUi($"Logs/aspect_{name}_map.png", null, keepState: true);
+                map.Preview(0);
                 shop.Preview(2);
                 CaptureUi($"Logs/aspect_{name}_shop.png", null, keepState: true);
                 shop.Hide();

@@ -49,8 +49,8 @@
       companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
       productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
       productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
-      // Crisp on phone screens, but never more than 1.5 pixels per CSS pixel so weak devices keep up.
-      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 1.5)
+      // Sharp on phone and retina screens: up to two pixels per CSS pixel.
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
     };
 
     // The page keeps a handle on the game for the Yandex bridge (SendMessage from JavaScript).

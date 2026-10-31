@@ -390,6 +390,9 @@ namespace JumpGame.EditorTools
             var teak = Mat("Yacht_Deck", "#B88A5A");
             var glass = Mat("Yacht_Glass", "#24384A", smoothness: 0.9f);
             var y0 = new Vector3(-24f, 0f, 6f);
+            var yachtModel = Prop("Structures", "Yacht", site, y0, Vector3.one, 0f, StructureSlots(("Hull", hullWhite), ("Stripe", stripe), ("Teak", teak), ("Glass", glass)));
+            if (yachtModel == null)
+            {
             Box("Hull", site, y0 + new Vector3(0f, 1.35f, 0f), new Vector3(3.6f, 3.3f, 12f), hullWhite);
             Box("Stripe", site, y0 + new Vector3(0f, 1f, 0f), new Vector3(3.64f, 0.3f, 12.04f), stripe);
             var yBow = Box("Bow", site, y0 + new Vector3(0f, 1.35f, 6f), new Vector3(2.55f, 3.3f, 2.55f), hullWhite);
@@ -410,6 +413,7 @@ namespace JumpGame.EditorTools
                 Box("Rail", site, y0 + new Vector3(side * 1.65f, 3.45f, -0.2f), new Vector3(0.04f, 0.04f, 10f), hullWhite);
                 for (float z = -5f; z <= 4.2f; z += 1.8f)
                     Box("Stanchion", site, y0 + new Vector3(side * 1.65f, 3.22f, z), new Vector3(0.04f, 0.45f, 0.04f), hullWhite);
+            }
             }
             solids.Add(new Bounds(y0 + new Vector3(0f, 1.35f, 0.2f), new Vector3(3.6f, 3.3f, 12.4f)));
             solids.Add(new Bounds(y0 + new Vector3(-0.2f, 3.8f, -1.5f), new Vector3(2.4f, 1.6f, 5f)));
@@ -455,6 +459,10 @@ namespace JumpGame.EditorTools
             var lamp = Glow(Mat("Lighthouse_Lamp", "#FFE7A3", smoothness: 0.9f), 0.6f);
             var lh = new Vector3(28f, 0f, -0.6f);
             Put(shard, "Base", cliff, lh + new Vector3(0f, 0.4f, 0f), new Vector3(9f, 6f, 8f), rockMats[2]);
+            var lighthouseModel = Prop("Structures", "Lighthouse", cliff, lh + new Vector3(0f, 0.05f, 0f), Vector3.one, 0f,
+                                       StructureSlots(("White", white), ("Red", red), ("Lamp", lamp), ("Stone", rockMats[2])));
+            if (lighthouseModel == null)
+            {
             Put(LowPolyMeshes.Prism("Lighthouse_Tower", 12, 1.7f, 1.25f, 17f), "Tower", cliff, lh + new Vector3(0f, 9.5f, 0f), Vector3.one, white);
             foreach (float by in new[] { 6f, 12f })
                 Put(LowPolyMeshes.Prism("Lighthouse_Band", 12, 1.62f, 1.52f, 1.6f), "Band", cliff, lh + new Vector3(0f, by, 0f), new Vector3(1.06f - by * 0.012f, 1f, 1.06f - by * 0.012f), red);
@@ -466,6 +474,7 @@ namespace JumpGame.EditorTools
                 // Railing round the back of the gallery, open towards the sea.
                 float a = Mathf.Deg2Rad * (200f + k * 17.5f);
                 Put(hex, "RailPost", cliff, lh + new Vector3(Mathf.Cos(a) * 2.2f, 18.5f, Mathf.Sin(a) * 2.2f), new Vector3(0.05f, 1f, 0.05f), white);
+            }
             }
             solids.Add(new Bounds(lh + new Vector3(0f, 0.2f, 0f), new Vector3(7.8f, 6.4f, 6.8f)));
             solids.Add(new Bounds(lh + new Vector3(0f, 9.5f, 0f), new Vector3(2.8f, 17f, 2.8f)));

@@ -29,10 +29,11 @@ namespace JumpGame.EditorTools
             mat.SetTexture("_BumpMap2", AssetDatabase.LoadAssetAtPath<Texture2D>(SurfaceTextureDir + "water_n2.png"));
             mat.SetTexture("_FoamTex", AssetDatabase.LoadAssetAtPath<Texture2D>(SurfaceTextureDir + "foam_a.png"));
             mat.SetTexture("_Caustics", AssetDatabase.LoadAssetAtPath<Texture2D>(SurfaceTextureDir + "caustics_a.png"));
-            mat.SetFloat("_Scale", 0.11f);
-            mat.SetFloat("_Flow", 0.03f);
-            mat.SetFloat("_BumpScale", 0.55f);
-            mat.SetFloat("_Glossiness", Mathf.Max(smoothness, 0.85f));
+            mat.SetFloat("_Scale", 0.045f);
+            mat.SetFloat("_Flow", 0.012f);
+            mat.SetFloat("_BumpScale", 0.5f);
+            mat.SetFloat("_CausticStrength", 0f);
+            mat.SetFloat("_Glossiness", 0.62f);
         }
     }
 }

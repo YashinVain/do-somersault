@@ -74,6 +74,9 @@ namespace JumpGame.EditorTools
 
             // The drilling derrick: four slanted legs with rings, a lit top.
             Vector3 dc = new Vector3(-4f, 13f, -17f);
+            var derrickModel = Prop("Structures", "Derrick", root, dc, Vector3.one, 0f, StructureSlots(("DerrickRed", red), ("Lamp", lit)));
+            if (derrickModel == null)
+            {
             for (int sx = -1; sx <= 1; sx += 2)
                 for (int sz = -1; sz <= 1; sz += 2)
                     Beam("DerrickLeg", root, dc + new Vector3(sx * 3.2f, 0f, sz * 3.2f), dc + new Vector3(sx * 0.8f, 32f, sz * 0.8f), 0.32f, red);
@@ -87,6 +90,7 @@ namespace JumpGame.EditorTools
                 }
             }
             Put(Smooth, "DerrickLight", root, dc + new Vector3(0f, 33f, 0f), Vector3.one * 0.7f, lit);
+            }
             solids.Add(new Bounds(dc + new Vector3(0f, 16f, 0f), new Vector3(7f, 32f, 7f)));
 
             // Flare stack on the corner with a flame at the tip.

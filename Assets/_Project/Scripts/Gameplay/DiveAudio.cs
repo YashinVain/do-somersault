@@ -12,7 +12,7 @@ namespace JumpGame
         [Tooltip("Matches the pause before the result panel shows.")]
         [SerializeField] float resultDelay = 0.9f;
 
-        float nextCreak, nextKnock;
+        float nextKnock;
         int knocks;
 
         void OnEnable()
@@ -33,16 +33,6 @@ namespace JumpGame
             diver.Knocked -= OnKnocked;
             diver.Entered -= OnEntered;
             flow.Finished -= OnFinished;
-        }
-
-        void Update()
-        {
-            // The board creaks louder the closer the diver is to tipping over.
-            if (diver.Current == Diver.State.Crouching && diver.LeanDanger > 0.5f && Time.time >= nextCreak)
-            {
-                Sounds.Play(Cue.Creak, 0.5f + diver.LeanDanger * 0.5f, 0.9f + diver.LeanDanger * 0.3f);
-                nextCreak = Time.time + 0.65f;
-            }
         }
 
         void OnCrouched()

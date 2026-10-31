@@ -6,6 +6,16 @@ namespace JumpGame.EditorTools
     // Night harbour: a quay with lamps, a tug, stacked containers and a gantry crane.
     public static partial class PrototypeSceneBuilder
     {
+        // A container on the quay: a collision box and the corrugated model (a plain box with ribs if the model is missing).
+        static void ContainerAt(Transform root, Vector3 c, Material paint, Material ribs, List<Bounds> solids, float yaw)
+        {
+            solids.Add(new Bounds(c, new Vector3(2.44f, 2.6f, 6.1f)));
+            if (Prop("Structures", "Container", root, c, Vector3.one, yaw, StructureSlots(("Paint", paint), ("Steel", ribs))) != null) return;
+            Box("Container", root, c, new Vector3(2.44f, 2.6f, 6.1f), paint);
+            for (float rib = -2.6f; rib <= 2.6f; rib += 0.52f)
+                Box("Rib", root, c + new Vector3(0f, 0f, rib), new Vector3(2.5f, 2.2f, 0.06f), ribs);
+        }
+
         static LocationSite BuildPortSite()
         {
             var site = new GameObject("Site_Port").transform;
@@ -61,8 +71,13 @@ namespace JumpGame.EditorTools
             float[] whW = { 22f, 16f, 18f };
             for (int i = 0; i < 3; i++)
             {
-                Box("Warehouse", root, new Vector3(whX[i], quayTop + 5f, -24f), new Vector3(whW[i], 10f, 10f), wallMat);
-                Box("WarehouseRoof", root, new Vector3(whX[i], quayTop + 10.3f, -24f), new Vector3(whW[i] + 0.6f, 0.6f, 10.6f), roofMat);
+                var warehouse = Prop("Structures", "Warehouse_" + (int)whW[i], root, new Vector3(whX[i], quayTop, -24f), Vector3.one, 0f,
+                                     StructureSlots(("WallSteel", wallMat), ("RoofSteel", roofMat), ("Steel", steelGrey)));
+                if (warehouse == null)
+                {
+                    Box("Warehouse", root, new Vector3(whX[i], quayTop + 5f, -24f), new Vector3(whW[i], 10f, 10f), wallMat);
+                    Box("WarehouseRoof", root, new Vector3(whX[i], quayTop + 10.3f, -24f), new Vector3(whW[i] + 0.6f, 0.6f, 10.6f), roofMat);
+                }
                 for (float wx = -whW[i] * 0.5f + 2f; wx < whW[i] * 0.5f - 1f; wx += 3.2f)
                     LitWindow(root, new Vector3(whX[i] + wx, quayTop + 6f, -18.95f), new Vector3(1.4f, 1f, 0.06f), lit);
             }
@@ -72,6 +87,9 @@ namespace JumpGame.EditorTools
 
             // 1 — a tug moored off the quay, nose to the sea; dive off the roof of its wheelhouse, 4.8 m.
             var t0 = new Vector3(-14f, 0f, 9f);
+            var tugModel = Prop("Structures", "Tug", root, t0, Vector3.one, 0f, StructureSlots(("Red", hullRed), ("Black", hullBlack), ("White", white), ("Lamp", lit)));
+            if (tugModel == null)
+            {
             Box("TugHull", root, t0 + new Vector3(0f, 1.3f, 0f), new Vector3(4.2f, 2.6f, 10f), hullRed);
             var tugBow = Box("TugBow", root, t0 + new Vector3(0f, 1.3f, 5f), new Vector3(2.9f, 2.6f, 2.9f), hullRed);
             tugBow.localRotation = Quaternion.Euler(0f, 45f, 0f);
@@ -82,6 +100,8 @@ namespace JumpGame.EditorTools
             Box("WheelhouseGlass", root, t0 + new Vector3(0f, 3.95f, 3.42f), new Vector3(2.6f, 0.8f, 0.06f), lit);
             Put(hex, "Funnel", root, t0 + new Vector3(0f, 4.4f, -2.2f), new Vector3(1f, 3.2f, 1f), hullBlack);
             Put(hex, "FunnelBand", root, t0 + new Vector3(0f, 5.4f, -2.2f), new Vector3(1.06f, 0.4f, 1.06f), red);
+            }
+            else solids.Add(new Bounds(t0 + new Vector3(0f, 3.7f, 1.8f), new Vector3(3f, 2.2f, 3.2f)));
             solids.Add(new Bounds(t0 + new Vector3(0f, 1.3f, 0f), new Vector3(4.2f, 2.6f, 10.4f)));
             solids.Add(new Bounds(t0 + new Vector3(0f, 4.4f, -2.2f), new Vector3(1.1f, 3.2f, 1.1f)));
             solids.Add(new Bounds(t0 + new Vector3(0f, 1.3f, 6.2f), new Vector3(2f, 2.6f, 1.8f)));
@@ -96,9 +116,7 @@ namespace JumpGame.EditorTools
                 {
                     var m = cont[(col * 2 + row * 3 + 1) % cont.Length];
                     var c = new Vector3(stackX + (col - 1) * 2.6f, quayTop + 1.3f + row * 2.6f, stackFront - 3.05f);
-                    Solid("Container", root, c, new Vector3(2.44f, 2.6f, 6.1f), m, solids);
-                    for (float rib = -2.6f; rib <= 2.6f; rib += 0.52f)
-                        Box("Rib", root, c + new Vector3(0f, 0f, rib), new Vector3(2.5f, 2.2f, 0.06f), steelGrey);
+                    ContainerAt(root, c, m, steelGrey, solids, 180f);
                 }
             }
             float topY = quayTop + 2.6f * 3;
@@ -107,7 +125,7 @@ namespace JumpGame.EditorTools
             {
                 float sx = k < 2 ? -12f - k * 2.7f : 11f + (k - 2) * 2.7f;
                 for (int row = 0; row < 2 + k % 2; row++)
-                    Solid("Container", root, new Vector3(sx, quayTop + 1.3f + row * 2.6f, stackFront - 3.05f), new Vector3(2.44f, 2.6f, 6.1f), cont[(k + row * 2) % cont.Length], solids);
+                    ContainerAt(root, new Vector3(sx, quayTop + 1.3f + row * 2.6f, stackFront - 3.05f), cont[(k + row * 2) % cont.Length], steelGrey, solids, 180f);
             }
             spots[2] = Mark("Spot_Containers", root, new Vector3(stackX, topY, stackFront));
 

@@ -72,6 +72,8 @@ def weights(kind, p):
         return {'Hips': hips, 'Spine': 1 - hips}
     if kind == 'trunksleg':
         return {'Hips': 0.35, T: 0.65}
+    if kind == 'delt':
+        return {'Spine': 0.5, A: 0.5}
     if kind == 'arm':          # shoulder to wrist in one piece
         elbow = ss(0.31, 0.17, y)
         spine = 0.4 * ss(0.42, 0.52, y)
@@ -107,7 +109,7 @@ def fat(kind, p):
         return (x * (1 + 0.95 * bump + 0.25 * chest), y, z * (1 + 1.25 * bump + 0.3 * chest) + belly)
     if base == 'trunksleg':
         return (x * 1.75 + (0.04 if x > 0 else -0.04), y, z * 1.55)
-    if base in ('arm', 'hand'):
+    if base in ('arm', 'hand', 'delt'):
         ax = (-1 if x < 0 else 1) * 0.235
         return (ax * 1.55 + (x - ax) * 1.6, y, z * 1.6)
     if base in ('leg', 'thigh', 'shin', 'foot'):
@@ -130,8 +132,8 @@ body = []
 
 # Torso: broad shoulders, a waist, rounded hips.
 torso_rows = lib.densify([
-    (-0.03, .145, .100), (0.03, .163, .108), (0.12, .138, .092), (0.24, .152, .098), (0.34, .180, .108),
-    (0.44, .202, .114), (0.51, .192, .102), (0.56, .135, .082)], 0.06)
+    (-0.03, .145, .100), (0.03, .163, .108), (0.12, .136, .094, 0, 0.003), (0.24, .15, .1, 0, 0.006), (0.33, .178, .112, 0, 0.012),
+    (0.42, .204, .127, 0, 0.02), (0.5, .195, .108, 0, 0.008), (0.56, .135, .082)], 0.05)
 body.append(tube(torso_rows, 'y', 16, dome0=2, dome1=2, depth0=0.06, depth1=0.05, mat='Skin', kind='torso'))
 # Neck and head.
 body.append(tube([(0.52, .060, .062), (0.62, .055, .058), (0.69, .056, .060)], 'y', 12, mat='Face', kind='neck'))
@@ -139,10 +141,20 @@ body.append(lib.smooth_head(HEAD_C, 0.128, 0.155, 0.14))
 for sx in (-1, 1):
     body.append(ellipsoid((sx * 0.131, 0.742, -0.006), (0.012, 0.034, 0.024), 'Face', 'head', 8, 5, rot=(0, 0, -sx * 8)))
 body.append(ellipsoid((0, 0.726, 0.15), (0.019, 0.026, 0.025), 'Face', 'head', 8, 5, rot=(-12, 0, 0)))           # nose
+body.append(ellipsoid((0, 0.682, 0.139), (0.027, 0.0075, 0.011), 'Mouth', 'head', 10, 4))                                      # upper lip
+body.append(ellipsoid((0, 0.664, 0.138), (0.024, 0.008, 0.011), 'Mouth', 'head', 10, 4))                                      # lower lip
+for sx in (-1, 1):
+    body.append(ellipsoid((sx * 0.047, 0.773, 0.136), (0.025, 0.007, 0.017), 'Face', 'head', 10, 4))                          # upper eyelid
+    body.append(ellipsoid((sx * 0.01, 0.712, 0.158), (0.007, 0.006, 0.006), 'Mouth', 'head', 6, 4))                           # nostril
 body.append(sweep([(-0.03, 0.678, 0.133), (-0.012, 0.668, 0.141), (0.012, 0.668, 0.141), (0.03, 0.678, 0.133)],
                   0.0035, 0.0045, ref=(0, 0, 1), sides=6, mat='Mouth', kind='head'))                          # a small smile
 for sx in (-1, 1):
     body.append(ellipsoid((sx * 0.05, 0.802, 0.13), (0.03, 0.0055, 0.01), 'Hair', 'head', 8, 4, rot=(0, 0, -sx * 9)))  # brows
+
+# Chest, abdomen, trapezius and back: shapes laid over the torso so the light finds muscle.
+for sx in (-1, 1):
+    body.append(ellipsoid((sx * 0.092, 0.548, -0.012), (0.09, 0.035, 0.06), 'Skin', 'torso', 12, 6, rot=(0, 0, sx * -16)))      # trapezius
+body.append(ellipsoid((0, 0.51, 0.01), (0.045, 0.06, 0.06), 'Face', 'neck', 10, 6))                                          # the base of the neck
 
 # Arms (one piece each, so the elbow bends smoothly) and mitten hands.
 arm_rows = lib.densify([(0.5, .060, .058), (0.42, .057, .055), (0.33, .050, .049), (0.23, .045, .045), (0.14, .042, .040),
@@ -152,12 +164,19 @@ for sx in (-1, 1):
     ax = sx * 0.235
     inner = -sx
     body.append(tube(arm_rows, 'y', S, dome0=2, dome1=1, depth0=0.055, depth1=0.02, mat='Skin', kind='arm:' + side).moved((ax, 0, 0)))
-    body.append(ellipsoid((ax, -0.062, 0), (0.021, 0.05, 0.03), 'Skin', 'hand:' + side, 10, 6))
-    body.append(ellipsoid((ax + inner * 0.015, -0.05, 0.03), (0.01, 0.026, 0.012), 'Skin', 'hand:' + side, 8, 5, rot=(-30, 0, 0)))
+    # hand: a flat palm, four slightly curled fingers and a thumb
+    body.append(ellipsoid((ax, -0.062, 0.002), (0.034, 0.042, 0.016), 'Skin', 'hand:' + side, 12, 6))
+    for k, (fx, fl) in enumerate([(-0.024, 0.062), (-0.008, 0.07), (0.008, 0.066), (0.024, 0.052)]):
+        fxx = ax + (fx * sx)
+        body.append(tube([(-0.098, .0095, .0095), (-0.098 - fl * 0.55, .0085, .0085), (-0.098 - fl, .0075, .0075)], 'y', 8, dome1=2, depth1=0.008,
+                         mat='Skin', kind='hand:' + side).moved((fxx, 0, 0.0)).rotated((-14, 0, 0), (fxx, -0.098, 0.0)))
+    body.append(tube([(0, .011, .011), (-0.03, .0095, .0095), (-0.052, .0085, .0085)], 'y', 8, dome1=2, depth1=0.008, mat='Skin', kind='hand:' + side)
+                .moved((ax + inner * 0.034, -0.045, 0.012)).rotated((-20, 0, inner * 25), (ax + inner * 0.034, -0.045, 0.012)))
+    body.append(ellipsoid((ax, 0.47, 0.0), (0.06, 0.07, 0.062), 'Skin', 'delt:' + side, 12, 7))         # deltoid
 
 # Legs: the left one in one piece; the right one in two, so a blade can take the lower half.
-leg_rows = [(0.02, .096, .098), (-0.08, .093, .095), (-0.2, .080, .082), (-0.34, .065, .068), (-0.42, .059, .061),
-            (-0.5, .055, .061, 0, -0.005), (-0.6, .051, .058, 0, -0.011), (-0.72, .041, .044, 0, -0.006), (-0.82, .037, .039),
+leg_rows = [(0.02, .096, .098), (-0.08, .093, .095), (-0.2, .086, .086), (-0.34, .066, .07), (-0.42, .06, .062),
+            (-0.5, .058, .068, 0, -0.012), (-0.6, .055, .074, 0, -0.022), (-0.72, .042, .05, 0, -0.012), (-0.82, .037, .039),
             (-0.845, .036, .037)]
 
 
@@ -182,15 +201,16 @@ body.append(tube(lib.densify(leg_rows[:5] + [(-0.45, .058, .06)], 0.05), 'y', S,
 right_lower = [tube(lib.densify(leg_rows[4:], 0.05), 'y', S, dome0=2, dome1=1, depth0=0.05, depth1=0.02, mat='Skin',
                     kind='shin:R').moved((0.1, 0, 0))] + foot_shapes(1, 'foot:R')
 
-# Trunks.
-trunks = [tube(lib.densify([(0.075, .167, .119), (0.04, .172, .122), (0.0, .170, .120), (-0.035, .140, .100)], 0.04), 'y', 16,
-               dome1=2, depth1=0.03, mat='Outfit', kind='trunks')]
+# Trunks: waist, legs of the shorts ending above the knee, a waistband and a drawcord with a small bow.
+trunks = [tube(lib.densify([(0.07, .166, .119), (0.035, .172, .122), (-0.02, .176, .124), (-0.1, .165, .118)], 0.04), 'y', 18,
+               dome1=3, depth1=0.075, mat='Outfit', kind='trunks')]
 for sx in (-1, 1):
-    # each leg of the trunks starts inside the pelvis with a rounded top, so the two legs flow out of one waist
-    trunks.append(tube([(-0.02, .104, .105), (-0.1, .103, .104), (-0.165, .100, .101)], 'y', 12, dome0=2, depth0=0.07, dome1=1,
+    trunks.append(tube([(0.0, .108, .108), (-0.06, .109, .109), (-0.13, .106, .106), (-0.2, .104, .104)], 'y', 14, dome0=2, depth0=0.05, dome1=1,
                        depth1=0.012, mat='Outfit', kind='trunksleg:' + limb_side(sx)).moved((sx * 0.1, 0, 0)))
-trunks.append(ellipsoid((0, -0.05, 0), (0.135, 0.085, 0.105), 'Outfit', 'trunks', 14, 6))     # fills the crotch between the legs
-trunks.append(tube([(0.072, .173, .124), (0.092, .173, .124)], 'y', 16, mat='Outfit', kind='trunks', closed=False))
+trunks.append(tube([(0.062, .1745, .1245), (0.088, .1745, .1245)], 'y', 18, mat='Strap', kind='trunks', closed=False))      # waistband
+trunks.append(sweep([(-0.03, 0.062, 0.128), (-0.05, 0.03, 0.134), (-0.04, 0.0, 0.133)], 0.006, 0.004, ref=(1, 0, 0), sides=6, mat='Shirt', kind='trunks'))
+trunks.append(sweep([(0.03, 0.062, 0.128), (0.05, 0.03, 0.134), (0.04, 0.0, 0.133)], 0.006, 0.004, ref=(1, 0, 0), sides=6, mat='Shirt', kind='trunks'))
+trunks.append(ellipsoid((0, 0.068, 0.131), (0.016, 0.01, 0.007), 'Shirt', 'trunks', 8, 4))
 
 # ---------------------------------------------------------------- props
 gear = {}   # object name -> list of shapes

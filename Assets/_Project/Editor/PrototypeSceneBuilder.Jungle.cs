@@ -155,23 +155,29 @@ namespace JumpGame.EditorTools
             }
             var thFloor = new Vector3(thx, 10.85f, -0.6f);
             var thSize = new Vector3(5.4f, 0.3f, 4.6f);
-            Solid("TreehouseFloor", root, thFloor, thSize, wood, solids);
+            var houseModel = Prop("Structures", "Treehouse", root, new Vector3(thx, 0f, -2.6f), Vector3.one, 0f, StructureSlots(("Wood", wood), ("WoodDark", woodDark), ("Thatch", thatch)));
+            if (houseModel != null) solids.Add(new Bounds(thFloor, thSize)); else Solid("TreehouseFloor", root, thFloor, thSize, wood, solids);
             foreach (float px in new[] { thx - 2.2f, thx + 2.2f })
             {
-                Beam("TreehousePost", root, new Vector3(px, 1f, 1.5f), new Vector3(px, 10.7f, 1.5f), 0.34f, woodDark);
+                if (houseModel == null) Beam("TreehousePost", root, new Vector3(px, 1f, 1.5f), new Vector3(px, 10.7f, 1.5f), 0.34f, woodDark);
                 solids.Add(new Bounds(new Vector3(px, 5.8f, 1.5f), new Vector3(0.4f, 9.8f, 0.4f)));
             }
-            Solid("TreehouseHut", root, new Vector3(thx, 12.35f, -1.8f), new Vector3(3.6f, 2.8f, 2.4f), wood, solids);
-            var hutRoof = Put(cone, "HutRoof", root, new Vector3(thx, 14.6f, -1.8f), new Vector3(5.6f, 1.9f, 4.2f), thatch);
-            hutRoof.localRotation = Quaternion.Euler(0f, 45f, 0f);
-            Box("HutDoor", root, new Vector3(thx, 12f, -0.58f), new Vector3(0.9f, 1.8f, 0.06f), woodDark);
-            foreach (float s in new[] { -1f, 1f })
+            if (houseModel != null)
+                solids.Add(new Bounds(new Vector3(thx, 12.35f, -1.8f), new Vector3(3.6f, 2.8f, 2.4f)));
+            else
             {
-                Box("Rope", root, new Vector3(thx + s * 2.6f, 11.6f, 0.4f), new Vector3(0.05f, 0.05f, 3.6f), woodDark);
-                Put(hex, "RailPost", root, new Vector3(thx + s * 2.6f, 11.3f, 2.1f), new Vector3(0.09f, 1f, 0.09f), woodDark);
+                Solid("TreehouseHut", root, new Vector3(thx, 12.35f, -1.8f), new Vector3(3.6f, 2.8f, 2.4f), wood, solids);
+                var hutRoof = Put(cone, "HutRoof", root, new Vector3(thx, 14.6f, -1.8f), new Vector3(5.6f, 1.9f, 4.2f), thatch);
+                hutRoof.localRotation = Quaternion.Euler(0f, 45f, 0f);
+                Box("HutDoor", root, new Vector3(thx, 12f, -0.58f), new Vector3(0.9f, 1.8f, 0.06f), woodDark);
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    Box("Rope", root, new Vector3(thx + s * 2.6f, 11.6f, 0.4f), new Vector3(0.05f, 0.05f, 3.6f), woodDark);
+                    Put(hex, "RailPost", root, new Vector3(thx + s * 2.6f, 11.3f, 2.1f), new Vector3(0.09f, 1f, 0.09f), woodDark);
+                }
+                for (float y = 1.4f; y < 10.7f; y += 0.45f)
+                    Box("LadderRung", root, new Vector3(thx + 1f, y, -1.7f), new Vector3(0.7f, 0.05f, 0.05f), wood);
             }
-            for (float y = 1.4f; y < 10.7f; y += 0.45f)
-                Box("LadderRung", root, new Vector3(thx + 1f, y, -1.7f), new Vector3(0.7f, 0.05f, 0.05f), wood);
             spots[2] = Mark("Spot_Treehouse", root, new Vector3(thx, 11f, 1.7f));
 
             // 3 — a stepped temple on the right bank, 16 m.

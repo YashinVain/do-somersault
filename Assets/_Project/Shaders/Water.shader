@@ -15,6 +15,7 @@ Shader "JumpGame/Water"
         _BumpScale ("Ripple strength", Range(0, 2)) = 0.6
         _Glossiness ("Smoothness", Range(0, 1)) = 0.92
         _Emission ("Glow", Range(0, 1)) = 0.0
+        _CausticStrength ("Light on the floor", Range(0, 1)) = 0.0
     }
 
     SubShader
@@ -28,7 +29,7 @@ Shader "JumpGame/Water"
 
         sampler2D _BumpMap, _BumpMap2, _FoamTex, _Caustics;
         fixed4 _Color, _DeepColor;
-        half _Scale, _Flow, _BumpScale, _Glossiness, _Emission;
+        half _Scale, _Flow, _BumpScale, _Glossiness, _Emission, _CausticStrength;
 
         // up to four splashes at once: x, y = world position on the surface, z = seconds since, w = strength (0 = unused)
         float4 _Impacts[4];
@@ -93,7 +94,7 @@ Shader "JumpGame/Water"
 
             // Shifting light on the floor, strongest in the clear shallow colour.
             half caustic = tex2D(_Caustics, p * 0.07 + float2(t * 2.0, -t * 1.4)).r * tex2D(_Caustics, p * 0.05 - float2(t * 1.3, t)).r;
-            col.rgb += caustic * 0.55 * (1.0 - depthTint) * fixed3(0.8, 1.0, 1.0);
+            col.rgb += caustic * _CausticStrength * (1.0 - depthTint) * fixed3(0.8, 1.0, 1.0);
 
             half foamTex = tex2D(_FoamTex, p * 0.35 + float2(t, 0)).r;
             half f = saturate(foam * (0.35 + foamTex));

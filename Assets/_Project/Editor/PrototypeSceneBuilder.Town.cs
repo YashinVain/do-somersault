@@ -177,6 +177,9 @@ namespace JumpGame.EditorTools
             {
                 var g = Mark("Gondola", root, new Vector3(gx, 0.05f, gz));
                 g.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                var gondolaModel = Prop("Structures", "Gondola", g, Vector3.zero, Vector3.one, 0f, StructureSlots(("Black", gondolaMat), ("Gold", gondolaTrim), ("Seat", Mat("Gondola_Seat", "#9B2F36"))));
+                if (gondolaModel == null)
+                {
                 Box("Hull", g, new Vector3(0f, 0.15f, 0f), new Vector3(1.1f, 0.4f, 6.5f), gondolaMat);
                 foreach (float s in new[] { -1f, 1f })
                 {
@@ -184,6 +187,7 @@ namespace JumpGame.EditorTools
                     prow.localRotation = Quaternion.Euler(s * -20f, 0f, 0f);
                 }
                 Box("Seat", g, new Vector3(0f, 0.4f, 0.4f), new Vector3(0.8f, 0.12f, 1.2f), Mat("Gondola_Seat", "#9B2F36"));
+                }
                 AddSway(g, Vector3.forward, 2.5f, 0.7f, gx);
             }
             foreach (var (px, pz) in new[] { (-26f, 4f), (-18f, 9f), (14f, 12f) })
