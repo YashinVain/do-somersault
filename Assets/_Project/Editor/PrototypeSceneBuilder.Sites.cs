@@ -247,6 +247,9 @@ namespace JumpGame.EditorTools
 
         static void Pine(Transform parent, Vector3 at, float s, Material needles, Material bark)
         {
+            var model = Prop("Trees", "Pine_" + "AB"[Variant(at, 2)], parent, at, Vector3.one * s, Variant(at, 360) * 1f,
+                             ("Needles", needles), ("Bark", bark));
+            if (model != null) return;
             var t = Mark("Pine", parent, at);
             t.localScale = Vector3.one * s;
             Put(hex, "Trunk", t, new Vector3(0f, 1f, 0f), new Vector3(0.35f, 2f, 0.35f), bark);
@@ -304,6 +307,15 @@ namespace JumpGame.EditorTools
             var trunkMat = Mat("PalmTrunk", "#9B7448");
             var leafMat = Mat("PalmLeaf", "#4F9A4A");
             var nut = Mat("Coconut", "#6B4A2B");
+
+            string palmName = "Palm_" + "AB"[Variant(at, 2)];
+            var palmModel = Prop("Trees", palmName, parent, at, Vector3.one * s, yaw, ("PalmLeaf", leafMat), ("PalmTrunk", trunkMat), ("Coconut", nut));
+            if (palmModel != null)
+            {
+                var top = FindDeep(palmModel, palmName + "_Crown");
+                if (top != null) AddSway(top, Vector3.forward, 4f, 0.8f, yaw * 0.1f);
+                return;
+            }
 
             var t = Mark("Palm", parent, at);
             t.localScale = Vector3.one * s;

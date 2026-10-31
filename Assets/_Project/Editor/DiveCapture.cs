@@ -51,6 +51,41 @@ namespace JumpGame.EditorTools
             Capture();
         }
 
+        // Close side views of a few characters through a dive: standing, crouching, taking off, tucked, opening.
+        public static void BuildAndCapturePoses()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            CapturePoses(new[] { 0, 2, 6, 7 }, "Logs/capture_poses.png");
+        }
+
+        public static void CapturePoses(int[] skinsToShow, string path)
+        {
+            var sheet = new Texture2D(FrameW * 5, FrameH * skinsToShow.Length, TextureFormat.RGB24, false);
+            cam.aspect = FrameW / (float)FrameH;
+            for (int row = 0; row < skinsToShow.Length; row++)
+            {
+                shop.Preview(skinsToShow[row]);
+                flow.Load(flow.LevelsIn(0)[3]);
+                diver.ResetToStart();
+                var shots = new System.Collections.Generic.List<float[]>
+                {
+                    // seconds to run, held while running
+                    new[] { 0.05f, 0f }, new[] { 0.7f, 1f }, new[] { 0.35f, 0f }, new[] { 0.35f, 1f }, new[] { 0.35f, 0f }
+                };
+                for (int col = 0; col < shots.Count; col++)
+                {
+                    for (float s = 0f; s < shots[col][0]; s += Dt) diver.Step(Dt, shots[col][1] > 0.5f);
+                    Vector3 mid = diver.transform.position;
+                    Vector3 side = diver.transform.right * 2.6f;
+                    cam.transform.SetPositionAndRotation(mid + side + Vector3.up * 0.1f, Quaternion.LookRotation(-side));
+                    Render(FrameW, FrameH, sheet, col * FrameW, (skinsToShow.Length - 1 - row) * FrameH);
+                }
+            }
+            File.WriteAllBytes(path, sheet.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(sheet);
+        }
+
         [MenuItem("Jump Game/Capture Dive Frames")]
         public static void Run()
         {
@@ -441,10 +476,158 @@ namespace JumpGame.EditorTools
             Debug.Log($"Scenario {s.name}:\n{log}");
         }
 
+        // Pictures for the Yandex Games catalog: icon, cover, screenshots and the frames of a short film.
+        public static void BuildAndCaptureStore()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            const string dir = "Logs/Store";
+            Directory.CreateDirectory(dir);
+            // A believable purse for the pictures: the test mode starts with 5000 coins.
+            var progressField = typeof(GameFlow).GetField("progress", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            ((ProgressData)progressField.GetValue(flow)).coins = 1240;
+
+            // Icon: the swimmer's face and goggles against the sky.
+            flow.Load(4);
+            flow.SelectSkin(0);
+            diver.ResetToStart();
+            diver.Step(Dt, false);
+            var icon = new Texture2D(512, 512, TextureFormat.RGB24, false);
+            float fov = cam.fieldOfView;
+            cam.fieldOfView = 26f;
+            Vector3 head = diver.transform.position + Vector3.up * 0.76f;
+            Vector3 toCam = diver.transform.forward * 1.25f - diver.transform.right * 0.55f - Vector3.up * 0.12f;
+            cam.transform.SetPositionAndRotation(head + toCam, Quaternion.LookRotation(-toCam));
+            Render(512, 512, icon, 0, 0);
+            File.WriteAllBytes($"{dir}/icon_512.png", icon.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(icon);
+            cam.fieldOfView = fov;
+
+            // Cover: the title screen.
+            uiW = 800;
+            uiH = 470;
+            flow.Load(0);
+            map.Preview(0);
+            CaptureUi($"{dir}/cover_800x470.png", null, keepState: true);
+            map.Preview(2);
+
+            // Screenshots, 16:9.
+            uiW = 1920;
+            uiH = 1080;
+            flow.Load(4);
+            CaptureUi($"{dir}/screenshot_1.png", null);
+
+            flow.Load(4);
+            var good = new Func<float, bool>(t => t < 1.0f || (t > 1.12f && t < 1.95f));
+            Simulate(good, 2.0f, false);
+            CaptureUi($"{dir}/screenshot_2.png", null, keepState: true);
+            lastOutcome = null;
+            Simulate(good, 3.6f, true);
+            CaptureUi($"{dir}/screenshot_3.png", lastOutcome);
+
+            foreach (var (n, loc, idx) in new[] { (4, 5, 3), (5, 2, 5), (6, 6, 3) })
+            {
+                flow.Load(flow.LevelsIn(loc)[idx]);
+                CaptureUi($"{dir}/screenshot_{n}.png", null);
+            }
+            flow.Load(flow.LevelsIn(2)[1]);
+            map.Preview(1);
+            CaptureUi($"{dir}/screenshot_7.png", null, keepState: true);
+            map.Preview(2);
+
+            // Film: a few dives, 30 frames a second, as JPEG frames; Blender joins them into the video.
+            uiW = 1280;
+            uiH = 720;
+            var video = $"{dir}/video";
+            if (Directory.Exists(video)) Directory.Delete(video, true);
+            Directory.CreateDirectory(video);
+            int frame = 1;
+            void Save(Texture2D tex) => File.WriteAllBytes($"{video}/frame_{frame++:00000}.jpg", tex.EncodeToJPG(92));
+
+            flow.Load(0);
+            map.Preview(0);
+            CaptureUi($"{dir}/film_title.png", null, keepState: true);
+            var titleBytes = File.ReadAllBytes($"{dir}/film_title.png");
+            var titleTex = new Texture2D(2, 2);
+            titleTex.LoadImage(titleBytes);
+            for (int i = 0; i < 75; i++) Save(titleTex);
+            UnityEngine.Object.DestroyImmediate(titleTex);
+
+            var reel = new[]
+            {
+                (level: 4, held: good, seconds: 5.6f, skin: 0),
+                (level: 13, held: new Func<float, bool>(t => t < 1.05f || (t > 1.17f && t < 2.0f)), seconds: 5.2f, skin: 0),
+                (level: 19, held: new Func<float, bool>(t => t < 1.05f || (t > 1.17f && t < 2.6f)), seconds: 5.2f, skin: 0),
+                (level: 14, held: new Func<float, bool>(t => t < 0.8f), seconds: 4.4f, skin: 2)
+            };
+            foreach (var r in reel)
+            {
+                flow.SelectSkin(r.skin == 0 || flow.OwnsSkin(r.skin) ? r.skin : 0);
+                flow.Load(r.level);
+                diver.Step(Dt, false);
+                follow.Snap();
+                var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+                cam.aspect = 1280 / 720f;
+                int step = 0;
+                for (float time = 0f; time < r.seconds; time += Dt, step++)
+                {
+                    diver.Step(Dt, r.held(time));
+                    zone.Step(Dt);
+                    splash.Step(Dt);
+                    popups.Step(Dt);
+                    follow.Step(Dt);
+                    if (step % 2 == 0)
+                    {
+                        Render(1280, 720, tex, 0, 0);
+                        Save(tex);
+                    }
+                }
+                UnityEngine.Object.DestroyImmediate(tex);
+            }
+            flow.SelectSkin(0);
+            uiW = 1280;
+            uiH = 720;
+            Debug.Log($"Store pictures done, {frame - 1} frames");
+        }
+
+        static int uiW = 1280, uiH = 720;
+
+        // The screens at other shapes of display: a modern phone, a tablet and an ultra-wide one, plus a phone held upright.
+        public static void BuildAndCaptureAspects()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            foreach (var (name, w, h) in new[] { ("phone", 1200, 540), ("tablet", 1024, 768), ("wide", 1260, 540), ("portrait", 540, 1080) })
+            {
+                uiW = w;
+                uiH = h;
+                flow.Load(0);
+                map.Preview(0);
+                CaptureUi($"Logs/aspect_{name}_title.png", null, keepState: true);
+                flow.Load(flow.LevelsIn(0)[1]);
+                map.Preview(1);
+                CaptureUi($"Logs/aspect_{name}_map.png", null, keepState: true);
+                shop.Preview(2);
+                CaptureUi($"Logs/aspect_{name}_shop.png", null, keepState: true);
+                shop.Hide();
+                flow.ApplySkin();
+                var lakeLevels = flow.LevelsIn(1);
+                flow.Load(lakeLevels[lakeLevels.Count - 1]);
+                map.Preview(1);
+                map.PreviewSummary();
+                CaptureUi($"Logs/aspect_{name}_summary.png", null, keepState: true);
+                map.Preview(2);
+                flow.Load(4);
+                CaptureUi($"Logs/aspect_{name}_ready.png", null);
+            }
+            uiW = 1280;
+            uiH = 720;
+        }
+
         // Renders the scene with the HUD drawn into the same image.
         static void CaptureUi(string path, DiveOutcome? result, bool keepState = false)
         {
-            const int w = 1280, h = 720;
+            int w = uiW, h = uiH;
             var canvas = hud.GetComponent<Canvas>();
             var scaler = hud.GetComponent<CanvasScaler>();
             var mode = canvas.renderMode;
@@ -464,6 +647,7 @@ namespace JumpGame.EditorTools
             scaler.enabled = false;
             scaler.enabled = true;
             Canvas.ForceUpdateCanvases();
+            SyncModel();
             cam.Render();
             cam.targetTexture = null;
 
@@ -480,11 +664,19 @@ namespace JumpGame.EditorTools
             canvas.renderMode = mode;
         }
 
+        // The authored model follows the joints in LateUpdate, which never runs here.
+        static void SyncModel()
+        {
+            var m = UnityEngine.Object.FindFirstObjectByType<DiverModel>();
+            if (m != null) m.Sync();
+        }
+
         static void Render(int w, int h, Texture2D into, int x, int y)
         {
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default, 4);
             cam.aspect = w / (float)h;
             cam.targetTexture = rt;
+            SyncModel();
             cam.Render();
             cam.targetTexture = null;
 

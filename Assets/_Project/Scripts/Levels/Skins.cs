@@ -53,6 +53,8 @@ namespace JumpGame
         public float width = 1f;
         public bool metallic;
         public Perk perk = Perk.None;
+        [Tooltip("Name of the authored model in DiverModel; empty is the shared human model.")]
+        public string model;
     }
 
     // Placeholders built from colours and a few props until the Blender models arrive.
@@ -67,14 +69,14 @@ namespace JumpGame
         static CharacterSkin Make(string title, string blurb, int price, string skin, string outfit, Gear gear,
                                   string face = null, string cap = "#FFC743", string strap = "#1E2A4A", string lens = "#2A2A30",
                                   string shirt = "#F4F1EA", string hair = "#3A2A20", string accent = "#C8553D",
-                                  float width = 1f, bool metallic = false, Perk perk = null)
+                                  float width = 1f, bool metallic = false, Perk perk = null, string model = null)
         {
             return new CharacterSkin
             {
                 title = title, blurb = blurb, price = price,
                 skin = C(skin), face = C(face ?? skin), outfit = C(outfit), cap = C(cap), strap = C(strap), lens = C(lens),
                 shirt = C(shirt), hair = C(hair), accent = C(accent), gear = gear, width = width, metallic = metallic,
-                perk = perk ?? Perk.None
+                perk = perk ?? Perk.None, model = model
             };
         }
 
@@ -108,7 +110,7 @@ namespace JumpGame
                  hair: "#1E1A18", shirt: "#C94B4B", accent: "#2B2320", strap: "#15120F",
                  perk: new Perk { title = "Сокровища", text = "На 50% больше монет за каждый прыжок", coins = 1.5f }),
             Make("Робот", "Считает обороты точнее судей.", 1000, "#AEB6C0", "#5A6572", Gear.Antenna | Gear.Eyes,
-                 face: "#C5CCD4", lens: "#66F0FF", accent: "#FF5E5E", metallic: true,
+                 face: "#C5CCD4", lens: "#66F0FF", accent: "#FF5E5E", metallic: true, model: "Robot",
                  perk: new Perk { title = "Тяжёлый и хрупкий", text = "Падает быстрее, центр круга даёт +200. После входа в воду замыкает и ломается", gravity = 1.3f, bullseye = 200, breaks = true })
         };
     }

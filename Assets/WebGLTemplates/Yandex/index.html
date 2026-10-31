@@ -7,13 +7,23 @@
   <!-- The platform script: gives the game ads, cloud saves and the leaderboard. Without it the game runs offline. -->
   <script src="https://yandex.ru/games/sdk/v2"></script>
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d1520; }
-    #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #0d1520; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d1520;
+                 touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #0d1520; touch-action: none; }
     #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
               color: #f4f1ea; font-family: Arial, sans-serif; background: #0d1520; transition: opacity .4s; }
     #loader h1 { margin: 0 0 22px; font-size: 54px; letter-spacing: 2px; }
     #loader .track { width: min(70vw, 420px); height: 6px; background: #223044; border-radius: 3px; overflow: hidden; }
     #loader .fill { width: 0; height: 100%; background: #ee6a55; }
+
+    /* The scenes are wide, so a phone held upright is asked to turn. A big window that happens to be tall is left alone. */
+    #rotate { display: none; position: fixed; inset: 0; z-index: 10; background: #0d1520; color: #f4f1ea;
+              font-family: Arial, sans-serif; text-align: center; flex-direction: column; align-items: center; justify-content: center; }
+    #rotate .phone { width: 54px; height: 94px; border: 5px solid #f4f1ea; border-radius: 12px; margin-bottom: 26px;
+                     animation: turn 2.4s ease-in-out infinite; }
+    #rotate p { margin: 0; font-size: 20px; line-height: 1.4; padding: 0 28px; }
+    @keyframes turn { 0%, 25% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+    @media (orientation: portrait) and (max-width: 900px) { #rotate { display: flex; } }
   </style>
 </head>
 <body>
@@ -22,9 +32,13 @@
     <h1>НЫРЯЙ</h1>
     <div class="track"><div class="fill" id="fill"></div></div>
   </div>
+  <div id="rotate"><div class="phone"></div><p>Поверни телефон горизонтально,<br>так играть удобнее</p></div>
 
   <script src="Build/{{{ LOADER_FILENAME }}}"></script>
   <script>
+    // No browser menu on a long press or a right click: the game owns every press.
+    document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
     var config = {
       dataUrl: "Build/{{{ DATA_FILENAME }}}",
       frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
@@ -34,7 +48,9 @@
       streamingAssetsUrl: "StreamingAssets",
       companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
       productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
-      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}}
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+      // Crisp on phone screens, but never more than 1.5 pixels per CSS pixel so weak devices keep up.
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 1.5)
     };
 
     // The page keeps a handle on the game for the Yandex bridge (SendMessage from JavaScript).

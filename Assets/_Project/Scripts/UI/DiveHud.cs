@@ -80,11 +80,24 @@ namespace JumpGame
             doubleCoinsButton.onClick.AddListener(DoubleCoins);
             nextLevelButton.onClick.AddListener(OnNextPressed);
             resultPanel.gameObject.SetActive(false);
+            FitTitle();
             RefreshLevel();
+        }
+
+        // The level name sits between the medal goals on the left and the buttons on the right; on a squarer screen it shrinks to fit.
+        void FitTitle()
+        {
+            var canvasRect = levelTitle.canvas != null ? levelTitle.canvas.transform as RectTransform : null;
+            if (canvasRect == null || canvasRect.rect.width < 1f) return;
+            levelTitle.resizeTextForBestFit = true;
+            levelTitle.resizeTextMinSize = 16;
+            levelTitle.resizeTextMaxSize = 28;
+            levelTitle.rectTransform.sizeDelta = new Vector2(Mathf.Clamp(canvasRect.rect.width - 780f, 240f, 560f), levelTitle.rectTransform.sizeDelta.y);
         }
 
         void RefreshLevel()
         {
+            FitTitle();
             var level = flow.Level;
             var saved = flow.Saved;
             if (saved == null) return;

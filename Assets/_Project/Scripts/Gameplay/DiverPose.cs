@@ -44,6 +44,32 @@ namespace JumpGame
         // Fell off the edge while still holding: the crouch curls up instead of opening.
         public bool Slipping { get; set; }
 
+        // The names an authored model must use for its bones, which are also the names of the body's joints here.
+        public static readonly string[] JointNames =
+        {
+            "Hips", "Spine", "Arm_L", "Arm_R", "ForeArm_L", "ForeArm_R", "Thigh_L", "Thigh_R", "Shin_L", "Shin_R", "Ankle_L", "Ankle_R"
+        };
+
+        public Transform Joint(string name)
+        {
+            switch (name)
+            {
+                case "Hips": return rig;
+                case "Spine": return spine;
+                case "Arm_L": return armL;
+                case "Arm_R": return armR;
+                case "ForeArm_L": return foreL;
+                case "ForeArm_R": return foreR;
+                case "Thigh_L": return thighL;
+                case "Thigh_R": return thighR;
+                case "Shin_L": return kneeL;
+                case "Shin_R": return kneeR;
+                case "Ankle_L": return ankleL;
+                case "Ankle_R": return ankleR;
+                default: return null;
+            }
+        }
+
         float arm, elbow, spineBend, thigh, knee, ankle;
         float armVel, elbowVel, spineVel, thighVel, kneeVel, ankleVel;
         float airTime, idleTime;

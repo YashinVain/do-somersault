@@ -26,6 +26,15 @@ namespace JumpGame.EditorTools
         {
             var rng = new System.Random(seed);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            string jungleName = "Jungle_" + "ABC"[seed % 3];
+            var jungleModel = Prop("Trees", jungleName, parent, at, Vector3.one * s, R(0f, 360f),
+                                   ("Bark", trunk), ("LeafA", crownA), ("LeafB", crownB));
+            if (jungleModel != null)
+            {
+                var top = FindDeep(jungleModel, jungleName + "_Crown");
+                if (top != null) AddSway(top, Vector3.forward, 2f, R(0.5f, 0.9f), R(0f, 6f));
+                return;
+            }
             var t = Mark("Tree", parent, at);
             t.localScale = Vector3.one * s;
             float h = R(5.5f, 8f);

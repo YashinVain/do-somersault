@@ -24,6 +24,19 @@ namespace JumpGame.EditorTools
                 Mat("Town_Mint", "#9CC7B8"), Mat("Town_Mauve", "#C9A3B8"), Mat("Town_Yellow", "#F0D58A")
             };
             var shard = RockMesh;
+            var trim = Mat("Town_Trim", "#EDE5D4");
+            var shutter = Mat("Town_Shutter", "#4F7A6B");
+            var door = Mat("Town_Door", "#7A4E2D");
+            var leaf = Mat("Town_Leaf", "#4F8F43");
+            var flower = Mat("Town_Flower", "#E85F5F");
+
+            // The authored house for this size, tinted for this one; null if the model file is missing.
+            Transform HouseModel(Transform parent, Vector3 baseCentre, float yaw, float w, float h, Material wall) =>
+                Prop("Houses", "House_" + w.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', 'p') + "_" +
+                     h.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', 'p'),
+                     parent, baseCentre, Vector3.one, yaw,
+                     ("Plaster", wall), ("Trim", trim), ("Roof", roofTile), ("Glass", glassMat), ("Shutter", shutter),
+                     ("Door", door), ("Leaf", leaf), ("Flower", flower));
 
             var root = Child("Town", site);
             var solids = new List<Bounds>();
@@ -47,6 +60,11 @@ namespace JumpGame.EditorTools
             foreach (var (x, w, h, c) in houses)
             {
                 var body = new Vector3(x, quayTop + h * 0.5f, front - 4.5f);
+                if (HouseModel(root, new Vector3(x, quayTop, front - 4.5f), 0f, w, h, plaster[c]) != null)
+                {
+                    solids.Add(new Bounds(body, new Vector3(w, h, 9f)));
+                    continue;
+                }
                 Solid("House", root, body, new Vector3(w, h, 9f), plaster[c], solids);
                 // A closed gable roof with a ridge along X: slopes to both sides, flat triangles at the ends.
                 Put(gable, "Roof", root, new Vector3(x, quayTop + h - 0.02f, front - 4.5f), new Vector3(w + 0.5f, 2.6f, 10f), roofTile);
@@ -182,7 +200,13 @@ namespace JumpGame.EditorTools
             };
             foreach (var (x, w, h, c) in farHouses)
             {
-                Solid("FarHouse", root, new Vector3(x, quayTop + h * 0.5f, farFront + 4.5f), new Vector3(w, h, 9f), plaster[c], solids);
+                var farBody = new Vector3(x, quayTop + h * 0.5f, farFront + 4.5f);
+                if (HouseModel(root, new Vector3(x, quayTop, farFront + 4.5f), 180f, w, h, plaster[c]) != null)
+                {
+                    solids.Add(new Bounds(farBody, new Vector3(w, h, 9f)));
+                    continue;
+                }
+                Solid("FarHouse", root, farBody, new Vector3(w, h, 9f), plaster[c], solids);
                 Put(gable, "Roof", root, new Vector3(x, quayTop + h - 0.02f, farFront + 4.5f), new Vector3(w + 0.5f, 2.6f, 10f), roofTile);
                 for (float fy = 2.5f; fy < h - 1.5f; fy += 3f)
                     for (float wx = -w * 0.5f + 1.6f; wx < w * 0.5f - 0.8f; wx += 2.4f)

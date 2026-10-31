@@ -30,8 +30,31 @@ namespace JumpGame
         [SerializeField] Transform[] widen;
         [SerializeField] Transform[] lenses;
         [SerializeField] Transform shinR;
+        [Tooltip("Authored character models; when it has one for the character, the placeholder body above is hidden.")]
+        [SerializeField] DiverModel model;
 
         static readonly Color Metal = new Color(0.75f, 0.78f, 0.82f);
+
+        // The colour and gloss of a role for a character; shared by the placeholder body and the authored models.
+        public static void Colour(SkinRole role, CharacterSkin s, out Color colour, out float gloss)
+        {
+            bool blade = (s.gear & Gear.Blade) != 0;
+            float skinGloss = s.metallic ? 0.85f : 0.3f;
+            switch (role)
+            {
+                case SkinRole.Skin: colour = s.skin; gloss = skinGloss; break;
+                case SkinRole.Face: colour = s.face; gloss = skinGloss; break;
+                case SkinRole.Outfit: colour = s.outfit; gloss = 0.3f; break;
+                case SkinRole.Cap: colour = s.cap; gloss = 0.55f; break;
+                case SkinRole.Strap: colour = s.strap; gloss = 0.5f; break;
+                case SkinRole.Lens: colour = s.lens; gloss = 0.9f; break;
+                case SkinRole.Shirt: colour = s.shirt; gloss = 0.25f; break;
+                case SkinRole.Hair: colour = s.hair; gloss = 0.2f; break;
+                case SkinRole.Accent: colour = s.accent; gloss = 0.4f; break;
+                case SkinRole.Metal: colour = Metal; gloss = 0.8f; break;
+                default: colour = blade ? Metal : s.skin; gloss = blade ? 0.8f : skinGloss; break; // ShinR
+            }
+        }
 
         readonly Dictionary<SkinRole, Material> materials = new Dictionary<SkinRole, Material>();
         Vector3[] widenBase, lensBase;
@@ -72,26 +95,13 @@ namespace JumpGame
         {
             Prepare();
 
-            void Tint(SkinRole role, Color c, float gloss)
-            {
-                if (!materials.TryGetValue(role, out var m)) return;
-                m.color = c;
-                m.SetFloat("_Glossiness", gloss);
-            }
-
             bool blade = (s.gear & Gear.Blade) != 0;
-            float skinGloss = s.metallic ? 0.85f : 0.3f;
-            Tint(SkinRole.Skin, s.skin, skinGloss);
-            Tint(SkinRole.Face, s.face, skinGloss);
-            Tint(SkinRole.Outfit, s.outfit, 0.3f);
-            Tint(SkinRole.Cap, s.cap, 0.55f);
-            Tint(SkinRole.Strap, s.strap, 0.5f);
-            Tint(SkinRole.Lens, s.lens, 0.9f);
-            Tint(SkinRole.Shirt, s.shirt, 0.25f);
-            Tint(SkinRole.Hair, s.hair, 0.2f);
-            Tint(SkinRole.Accent, s.accent, 0.4f);
-            Tint(SkinRole.Metal, Metal, 0.8f);
-            Tint(SkinRole.ShinR, blade ? Metal : s.skin, blade ? 0.8f : skinGloss);
+            foreach (var kv in materials)
+            {
+                Colour(kv.Key, s, out var colour, out float gloss);
+                kv.Value.color = colour;
+                kv.Value.SetFloat("_Glossiness", gloss);
+            }
 
             foreach (var g in gear)
                 if (g.part != null) g.part.SetActive((s.gear & g.gear) != 0);
@@ -108,6 +118,8 @@ namespace JumpGame
 
             // A running blade is a thin shaft rather than a calf.
             if (shinR != null) shinR.localScale = blade ? new Vector3(shinBase.x * 0.45f, shinBase.y, shinBase.z * 0.45f) : shinBase;
+
+            if (model != null) model.Use(s);
         }
     }
 }

@@ -551,6 +551,9 @@ namespace JumpGame.EditorTools
 
         static void Tree(Transform root, Vector3 at, float s, Material crown, Material bark)
         {
+            var model = Prop("Trees", "Tree_" + "ABC"[Variant(at, 3)], root, at, Vector3.one * s, Variant(at, 360) * 1f,
+                             ("Crown", crown), ("Bark", bark));
+            if (model != null) return;
             var t = new GameObject("Tree").transform;
             t.SetParent(root, false);
             t.localPosition = at;
@@ -877,6 +880,21 @@ namespace JumpGame.EditorTools
             LinkArray(dress, "widen", widen.ToArray());
             LinkArray(dress, "lenses", lensParts.ToArray());
             Link(dress, "shinR", shinRight);
+
+            // Authored models from Blender, when they exist: they take over the look while the joints above keep driving them.
+            var modelHost = root.AddComponent<DiverModel>();
+            Link(modelHost, "pose", pose);
+            var prefabs = new System.Collections.Generic.List<Object>();
+            foreach (var n in new[] { "Diver", "Robot" })
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Models/Characters/{n}.fbx");
+                if (prefab != null) prefabs.Add(prefab);
+            }
+            LinkArray(modelHost, "models", prefabs.ToArray());
+            var placeholders = new System.Collections.Generic.List<Object>();
+            foreach (var r in rig.GetComponentsInChildren<Renderer>(true)) placeholders.Add(r);
+            LinkArray(modelHost, "placeholder", placeholders.ToArray());
+            Link(dress, "model", modelHost);
 
             var diver = root.AddComponent<Diver>();
             Link(diver, "pose", pose);
