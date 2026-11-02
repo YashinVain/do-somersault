@@ -51,6 +51,14 @@ namespace JumpGame.EditorTools
             Capture();
         }
 
+        // The view from every jump spot of every location: Logs/capture_loc_<n>.png
+        public static void BuildAndCaptureLocations()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            CaptureLevels();
+        }
+
         // Close side views of a few characters through a dive: standing, crouching, taking off, tucked, opening.
         public static void BuildAndCapturePoses()
         {

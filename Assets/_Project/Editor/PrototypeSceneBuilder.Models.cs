@@ -20,7 +20,7 @@ namespace JumpGame.EditorTools
                 var part = site.Find(name);
                 if (part == null) continue;
                 foreach (var r in part.GetComponentsInChildren<Renderer>(true))
-                    if (!r.gameObject.name.StartsWith("Water")) r.enabled = false;
+                    if (!r.gameObject.name.Contains("Water")) r.enabled = false;
             }
             if (hideLife != null)
             {
@@ -42,7 +42,8 @@ namespace JumpGame.EditorTools
                 var shared = r.sharedMaterials;
                 for (int i = 0; i < shared.Length; i++)
                     if (shared[i] != null)
-                        shared[i] = Mat(shared[i].name, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), shared[i].name.Contains("Glass") ? 0.5f : 0.08f);
+                        // One material per location and purpose ("Lake_Wood"): two locations may call different browns "Wood".
+                        shared[i] = Mat(file.Substring(file.IndexOf('_') + 1) + "_" + shared[i].name, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), shared[i].name.Contains("Glass") ? 0.5f : 0.08f);
                 r.sharedMaterials = shared;
             }
             return true;

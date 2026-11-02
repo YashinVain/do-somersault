@@ -12,6 +12,10 @@ namespace JumpGame.EditorTools
 
         const float LakeBlockSize = 100f, LakeBlockZ = 6f;
 
+        // A smooth wobble in about -0.5..0.5. It is made of sines so Blender can compute exactly the same ground (Blender/lowpoly/loc_lake.py).
+        static float LakeNoise(float x, float z)
+            => 0.5f * (Mathf.Sin(x * 0.13f + 1.7f) * Mathf.Cos(z * 0.11f + 0.4f) * 0.6f + Mathf.Sin(x * 0.29f + z * 0.21f + 2.3f) * 0.4f);
+
         // Ground height over the lake block, in site space. An oval lake with a wobbly shore, sand at the edge
         // and gently rolling grass beyond; flattened where the jetty and the pier come ashore.
         static float LakeHeight(float x, float z)
@@ -22,7 +26,7 @@ namespace JumpGame.EditorTools
             float d = Mathf.Sqrt(dx * dx + dz * dz) / wobble;
             float shore = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.86f, 1.14f, d));
             float h = Mathf.Lerp(-4.2f, 1.3f, shore);
-            h += shore * (Mathf.PerlinNoise(x * 0.06f + 3f, z * 0.06f + 7f) - 0.5f) * 2.4f;
+            h += shore * LakeNoise(x, z) * 2.4f;
 
             bool landing = (Mathf.Abs(x) < 3f || Mathf.Abs(x + 12f) < 2.5f) && z < -12f;
             if (landing) h = Mathf.Min(h, 0.75f);
@@ -244,6 +248,8 @@ namespace JumpGame.EditorTools
 
             LakeShore(site);
             LakeLife(site);
+            // The Blender model of the lake, when it exists, is what the player sees; the boxes and spots built above stay as the physics.
+            UseLocationModel(site, "Loc_Lake", new[] { "Ground", "Spots", "Shore", "Boat", "Base_Soil", "Base_Earth", "Base_Rock" });
             site.position = SiteOffsets[1];
 
             return MakeSite(site, tower, new Look
