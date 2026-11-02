@@ -140,6 +140,8 @@ namespace JumpGame.EditorTools
             BuildSurroundings(site);
             PoolLife(site);
             BlockBase(site, new Vector2(0f, PoolBlockZ), new Vector2(PoolBlockHalf * 2f, PoolBlockHalf * 2f), PoolBlockTop, null);
+            // The Blender model of the pool, when it exists, is what the player sees; the boxes above stay as the physics.
+            UseLocationModel(site, "Loc_Pool", new[] { "Pool", "Tower", "Surroundings", "Base_Soil", "Base_Earth", "Base_Rock" }, new[] { "Bunting", "Pennant", "Duck" });
             site.position = SiteOffsets[0];
 
             return MakeSite(site, tower, new Look

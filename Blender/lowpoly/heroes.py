@@ -189,7 +189,7 @@ def trunks(c, hem_frac=0.32, mat='Outfit', thick=0.007, name='Trunks', ragged=Fa
             return False
         h = hem + (0.045 * noise.noise(Vector((u[0] * 17, u[2] * 17, seed))) if ragged else 0.0)
         return h < u[1] < waist
-    return shell(c, name, region, thick, amp=0.003, freq=11, target=420, mat=mat, seed=seed, cuts=() if ragged else (hem, waist))
+    return shell(c, name, region, thick, amp=0.003, freq=11, target=700 if c.kind == 'fat' else 460, mat=mat, seed=seed, cuts=() if ragged else (hem, waist))
 
 
 def shirt(c, kind='tee', hem_off=-0.085, sleeve=0.12, mat='Shirt', name='Gear_Shirt', ragged=False, seed=21, thick=0.013, target=420):
@@ -198,13 +198,11 @@ def shirt(c, kind='tee', hem_off=-0.085, sleeve=0.12, mat='Shirt', name='Gear_Sh
     sh = c.shoulder
     waist = lu['pelvis'][1] + 0.075 * c.ts
     hem = waist + hem_off if kind != 'top' else waist + 0.17 * c.ts
-    neck = Vector((0, sh + 0.06 * c.ts, lu['head'][2]))
+    top = sh + 0.035 * c.ts  # the collar: one clean horizontal edge round the base of the neck
 
     def region(u, w):
         h = hem + (0.05 * noise.noise(Vector((u[0] * 15, u[2] * 15, seed))) if ragged else 0.0)
-        if u[1] < h or u[1] > sh + 0.12 * c.ts:
-            return False
-        if (Vector(u) - neck).length < 0.062 * c.sw + 0.02 and u[1] > sh - 0.02 * c.ts:  # the neck hole
+        if u[1] < h or u[1] > top:
             return False
         if part(w, 'Head') > 0.4 or part(w, 'ForeArm') > 0.4 or part(w, 'Thigh', 'Shin', 'Ankle') > 0.5:
             return False
@@ -214,7 +212,7 @@ def shirt(c, kind='tee', hem_off=-0.085, sleeve=0.12, mat='Shirt', name='Gear_Sh
     # an untucked shirt flares toward the hem
     def flare(u):
         return 0.014 * max(0.0, min(1.0, (hem + 0.14 - u[1]) / 0.14))
-    return shell(c, name, region, thick, amp=0.005, freq=9, target=target, mat=mat, seed=seed, cuts=() if ragged else (hem, sh - sleeve), flare=flare)
+    return shell(c, name, region, thick, amp=0.005, freq=9, target=target, mat=mat, seed=seed, cuts=(top,) if ragged else (hem, sh - sleeve, top), flare=flare)
 
 
 # ------------------------------------------------------------------ the head: hair, cap, beard
@@ -259,7 +257,7 @@ def beard(c, big=False, seed=5, mat='Hair'):
     mouth = hj + 0.040 * k - 0.068 * k
 
     def region(u, w):
-        if u[1] < hj - 0.10 * k or part(w, 'Head') < 0.5 or u[2] < hz - 0.03 * k:
+        if u[1] < hj - 0.062 * k or part(w, 'Head') < 0.5 or u[2] < hz - 0.03 * k:
             return False
         if abs(u[0]) > 0.052 * kx:                      # sideburns up to the ears
             return u[1] < hj + 0.02 * k
@@ -377,7 +375,7 @@ def backpack(c):
          box((0, 0.1 + 0.07 * ts, bz - 0.04), (0.2 * sw, 0.1 * ts, 0.06), 0.0, 1, 'Accent', 'x')]
     for sx in (-1, 1):  # the straps go over the shoulders and down the chest, outside the shirt (1.3 cm thick)
         S.append(sweep([(sx * 0.09 * sw, 0.1 + 0.34 * ts, c.back_z + 0.01), (sx * 0.1 * sw, 0.1 + 0.45 * ts, c.back_z * 0.5), (sx * 0.1 * sw, 0.1 + 0.52 * ts, 0.0),
-                        (sx * 0.1 * sw, 0.1 + 0.4 * ts, c.front_z + 0.02), (sx * 0.1 * sw, 0.1 + 0.2 * ts, c.front_z + 0.02)], 0.017, 0.007, ref=(1, 0, 0), sides=4, mat='Strap', kind='x'))
+                        (sx * 0.1 * sw, 0.1 + 0.49 * ts, c.front_z * 0.6)], 0.017, 0.007, ref=(1, 0, 0), sides=4, mat='Strap', kind='x'))
     return from_shapes('Gear_Backpack', S)
 
 
@@ -504,7 +502,7 @@ def make_item(c, name):
             return shirt(c, 'tee', ragged=True, thick=0.013, target=380)  # the zombie's and the pirate's rags
         return shirt(c, 'tee', sleeve=0.11 if k == 'kid' else 0.13)
     if name == 'Gear_Hair':
-        return hair(c, 'sides' if k == 'old' else 'long' if k == 'woman' else 'short')
+        return hair(c, 'sides' if k == 'old' else 'short')
     if name == 'Gear_Beard':
         return beard(c, big=(k == 'swimmer'))
     one = {'Gear_SwimCap': swim_cap, 'Gear_Goggles': goggles, 'Gear_PirateHat': pirate_hat, 'Gear_Eyepatch': eyepatch, 'Gear_Mask': mask,

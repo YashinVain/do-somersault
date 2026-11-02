@@ -200,7 +200,7 @@ def landmarks(rig):
     return lm
 
 
-HAND_SCALE = 1.3  # MPFB hands read small at game distance
+HAND_SCALE = 1.05  # MPFB hands read small at game distance
 
 
 def fatten(human, lm, amount):
