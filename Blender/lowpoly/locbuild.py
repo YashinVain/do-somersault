@@ -35,6 +35,7 @@ class Builder:
         self.colours = {}
         self.spots = {}
         self.tris = 0
+        self.open = set()   # materials that are open sheets (terrain): their normals are set by hand, never recalculated
 
     def mat(self, name, hexcol):
         self.colours[name] = hexcol
@@ -66,14 +67,17 @@ class Builder:
         except TypeError:
             bmesh.ops.create_cone(bm, diameter1=2 * r0, diameter2=2 * max(r1, 1e-4), depth=h, **kw)
 
-    def ico(self, mat, x, y, z, r, squash=1.0, sub=1):
+    def ico(self, mat, x, y, z, r, squash=1.0, sub=1, sc=(1.0, 1.0, 1.0)):
+        """sc scales the sphere along Unity x, y, z (an egg, a flattened stone)."""
         bm = self._bm(mat)
         try:
             res = bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
         except TypeError:
             res = bmesh.ops.create_icosphere(bm, subdivisions=sub, diameter=2 * r)
         for v in res['verts']:
-            v.co.z *= squash
+            v.co.x *= sc[0]
+            v.co.y *= sc[2]
+            v.co.z *= sc[1] * squash
         bmesh.ops.translate(bm, verts=res['verts'], vec=B(x, y, z))
 
     def tri(self, mat, p0, p1, p2):
@@ -81,6 +85,30 @@ class Builder:
         bm = self._bm(mat)
         for pts in ((p0, p1, p2), (p2, p1, p0)):  # two faces on their own points (a face cannot be doubled on shared ones)
             bm.faces.new([bm.verts.new(B(*p)) for p in pts])
+
+    def terrain(self, x0, x1, z0, z1, step, height, choose, skip=None, jitter=None):
+        """A height-field of triangles. height(x, z) -> y; choose(cx, cz, y) -> material name per triangle; skip(cx, cz) leaves a hole in a
+        cell; jitter(x, z) -> (dx, dz) moves the grid points so the ground does not look like a chessboard."""
+        nx, nz = int(round((x1 - x0) / step)), int(round((z1 - z0) / step))
+
+        def P(i, j):
+            x, z = x0 + i * step, z0 + j * step
+            if jitter:
+                dx, dz = jitter(x, z)
+                x, z = x + dx, z + dz
+            return x, height(x, z), z
+        for i in range(nx):
+            for j in range(nz):
+                if skip and skip(x0 + (i + 0.5) * step, z0 + (j + 0.5) * step):
+                    continue
+                c = [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]
+                tris = ((0, 1, 2), (0, 2, 3)) if (i + j) % 2 == 0 else ((0, 1, 3), (1, 2, 3))
+                for t in tris:
+                    pts = [c[k] for k in t]
+                    mat = choose(sum(q[0] for q in pts) / 3, sum(q[2] for q in pts) / 3, sum(q[1] for q in pts) / 3)
+                    self.open.add(mat)
+                    bm = self._bm(mat)
+                    bm.faces.new([bm.verts.new(B(q[0], q[1], q[2])) for q in pts])
 
     def spot(self, name, x, y, z):
         self.spots[name] = (x, y, z)
@@ -90,7 +118,8 @@ class Builder:
         bpy.context.scene.collection.children.link(coll)
         self.objects = []
         for name, bm in self.bms.items():
-            bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            if name not in self.open:
+                bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
             me = bpy.data.meshes.new(name)
             bm.to_mesh(me)
             self.tris += sum(max(1, len(p.vertices) - 2) for p in me.polygons)
