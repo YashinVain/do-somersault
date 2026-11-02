@@ -56,7 +56,8 @@ namespace JumpGame.EditorTools
         {
             PrototypeSceneBuilder.Build();
             Open();
-            CapturePoses(new[] { 0, 1, 2, 9 }, "Logs/capture_poses.png");
+            CapturePoses(new[] { 0, 1, 2, 3, 4 }, "Logs/capture_poses.png");
+            CapturePoses(new[] { 5, 6, 7, 8, 9 }, "Logs/capture_poses2.png");
         }
 
         public static void CapturePoses(int[] skinsToShow, string path)

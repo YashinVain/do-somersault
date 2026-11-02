@@ -11,7 +11,7 @@ namespace JumpGame.EditorTools
         public static void Dump()
         {
             var sb = new StringBuilder();
-            foreach (var path in new[] { "Props/Trees", "Props/Rocks", "Props/Cliffs", "Props/Houses", "Characters/Diver" })
+            foreach (var path in new[] { "Props/Trees", "Props/Rocks", "Props/Cliffs", "Props/Houses", "Characters/Swimmer" })
             {
                 var go = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Models/{path}.fbx");
                 if (go == null) continue;
@@ -25,7 +25,7 @@ namespace JumpGame.EditorTools
         public static void TestSkin()
         {
             var sb = new StringBuilder();
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Models/Characters/Diver.fbx");
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Models/Characters/Swimmer.fbx");
             var go = Object.Instantiate(prefab);
             var renderers = go.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             sb.AppendLine($"skinned renderers: {renderers.Length}, mesh renderers: {go.GetComponentsInChildren<MeshRenderer>(true).Length}, animators: {go.GetComponentsInChildren<Animator>(true).Length}");

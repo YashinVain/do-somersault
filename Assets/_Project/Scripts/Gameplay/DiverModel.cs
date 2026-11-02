@@ -17,8 +17,6 @@ namespace JumpGame
         [Tooltip("The primitives of the placeholder body: hidden while an authored model is shown.")]
         [SerializeField] Renderer[] placeholder;
 
-        const string FatShape = "Fat";
-
         // The bones the model must have, parents first, and who each hangs from.
         static readonly string[] BoneNames =
         {
@@ -60,7 +58,6 @@ namespace JumpGame
             public Renderer[] renderers;
             public List<(GameObject part, Gear gear)> gear = new List<(GameObject, Gear)>();
             public List<(GameObject part, Gear gear)> without = new List<(GameObject, Gear)>();
-            public List<(SkinnedMeshRenderer mesh, int index)> fat = new List<(SkinnedMeshRenderer, int)>();
         }
 
         readonly Dictionary<GameObject, Bound> bound = new Dictionary<GameObject, Bound>();
@@ -180,12 +177,7 @@ namespace JumpGame
                 }
                 r.sharedMaterials = shared;
 
-                if (r is SkinnedMeshRenderer sm && sm.sharedMesh != null)
-                {
-                    int fat = sm.sharedMesh.GetBlendShapeIndex(FatShape);
-                    if (fat >= 0) b.fat.Add((sm, fat));
-                    sm.updateWhenOffscreen = true;
-                }
+                if (r is SkinnedMeshRenderer sm && sm.sharedMesh != null) sm.updateWhenOffscreen = true;
             }
 
             // Props are children named Gear_<Name> (or Gear_<Name>_<Name> for several): shown when the character has any of them.
@@ -228,11 +220,8 @@ namespace JumpGame
             }
             foreach (var g in b.gear) g.part.SetActive((s.gear & g.gear) != 0);
             foreach (var g in b.without) g.part.SetActive((s.gear & g.gear) == 0);
-            // A heavy character is the same body with the "Fat" shape key blended in; the key is authored for the widest one (1.34).
-            float fat = Mathf.Clamp01((s.width - 1f) / 0.34f) * 100f;
-            foreach (var f in b.fat) f.mesh.SetBlendShapeWeight(f.index, fat);
-
-            // A child stands lower and has a bigger head. The scale is about the hips; the hips are lowered in Retarget so the soles stay put.
+            // The bodies are authored at their own size (a child, a heavy man are separate models), so height and headScale stay 1 for them.
+            // They remain as a fine adjustment. The scale is about the hips; the hips are lowered in Retarget so the soles stay put.
             b.height = Mathf.Clamp(s.height, 0.6f, 1.2f);
             b.headScale = Mathf.Clamp(s.headScale, 0.8f, 1.4f);
             b.root.transform.localScale = Vector3.one * b.height;

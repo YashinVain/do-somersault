@@ -885,7 +885,7 @@ namespace JumpGame.EditorTools
             var modelHost = root.AddComponent<DiverModel>();
             Link(modelHost, "pose", pose);
             var prefabs = new System.Collections.Generic.List<Object>();
-            foreach (var n in new[] { "Diver", "Robot" })
+            foreach (var n in new[] { "Swimmer", "Kid", "Fat", "Old", "Woman", "Robot" })   // the first is the default model
             {
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Models/Characters/{n}.fbx");
                 if (prefab != null) prefabs.Add(prefab);

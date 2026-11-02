@@ -42,13 +42,13 @@ MATERIALS = {}
 
 
 def material(name, hex_colour, rough=0.6, metal=0.0, emit=None):
-    if name in MATERIALS:
+    if name in MATERIALS and MATERIALS[name].name in bpy.data.materials:
         return MATERIALS[name]
-    m = bpy.data.materials.new(name)
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)   # reuse on reload: keeps assignments
     h = hex_colour.lstrip('#')
     c = tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)) + (1.0,)
     lin = tuple(((v + 0.055) / 1.055) ** 2.4 if v > 0.04045 else v / 12.92 for v in c[:3]) + (1.0,)
-    m.diffuse_color = lin
+    m.diffuse_color = c   # the display colour for Workbench previews (sRGB as typed)
     m.use_nodes = True
     bsdf = m.node_tree.nodes.get('Principled BSDF')
     if bsdf:
