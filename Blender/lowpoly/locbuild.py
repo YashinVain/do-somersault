@@ -172,7 +172,7 @@ class Builder:
                 except ValueError:
                     pass
 
-    def skin(self, mat, rings, axis=None, closed=True, cap_a=False, cap_b=False):
+    def skin(self, mat, rings, axis=None, closed=True, cap_a=False, cap_b=False, flip=False):
         """A surface through rings of Unity points (every ring the same length, e.g. the cross-sections of a hull), joined by quads.
         Faces look away from the axis: `axis(k)` gives a point inside ring k (default: the ring's centre). closed=False leaves a strip
         (a deck, one side of a hull). The material is an open sheet: its normals are set here and never recalculated."""
@@ -184,6 +184,8 @@ class Builder:
         n = len(rings[0])
 
         def add(a, b, c, out):
+            if flip:
+                out = -out
             if (b - a).cross(c - a).dot(out) < 0:
                 b, c = c, b
             try:

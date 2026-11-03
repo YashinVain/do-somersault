@@ -248,6 +248,8 @@ namespace JumpGame.EditorTools
 
             var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { -3f, -3f, -3f, -3f, -3f, -3f, -3f });
             SeaGulls(site, new Vector3(0f, 0f, 12f));
+            // The Blender model of the town is what the player sees; the boxes and spots built above stay as the physics. The gondolas are the game's own.
+            UseLocationModel(site, "Loc_Town", new[] { "Town", "Seabed", "Base_Soil", "Base_Earth", "Base_Rock" }, null, new[] { "Gondola" });
             site.position = SiteOffsets[5];
 
             return MakeSite(site, tower, new Look
