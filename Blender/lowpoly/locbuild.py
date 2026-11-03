@@ -67,14 +67,20 @@ class Builder:
         except TypeError:
             bmesh.ops.create_cone(bm, diameter1=2 * r0, diameter2=2 * max(r1, 1e-4), depth=h, **kw)
 
-    def ico(self, mat, x, y, z, r, squash=1.0, sub=1, sc=(1.0, 1.0, 1.0)):
-        """sc scales the sphere along Unity x, y, z (an egg, a flattened stone)."""
+    def ico(self, mat, x, y, z, r, squash=1.0, sub=1, sc=(1.0, 1.0, 1.0), jit=0.0, seed=0):
+        """sc scales the sphere along Unity x, y, z (an egg, a flattened stone); jit pushes every corner about by that share of r, so a stone is
+        not a perfect ball."""
         bm = self._bm(mat)
         try:
             res = bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
         except TypeError:
             res = bmesh.ops.create_icosphere(bm, subdivisions=sub, diameter=2 * r)
-        for v in res['verts']:
+        for k, v in enumerate(res['verts']):
+            if jit:
+                s = math.sin(seed * 91.7 + k * 12.9898) * 43758.5453
+                u = math.sin(seed * 37.3 + k * 78.233) * 12345.678
+                w = math.sin(seed * 11.1 + k * 39.346) * 24680.1357
+                v.co += Vector(((s % 1.0) - 0.5, (u % 1.0) - 0.5, (w % 1.0) - 0.5)) * (2 * jit * r)
             v.co.x *= sc[0]
             v.co.y *= sc[2]
             v.co.z *= sc[1] * squash
@@ -165,6 +171,38 @@ class Builder:
                     bm.faces.new([vs[0], vs[k], vs[k + 1]])
                 except ValueError:
                     pass
+
+    def skin(self, mat, rings, axis=None, closed=True, cap_a=False, cap_b=False):
+        """A surface through rings of Unity points (every ring the same length, e.g. the cross-sections of a hull), joined by quads.
+        Faces look away from the axis: `axis(k)` gives a point inside ring k (default: the ring's centre). closed=False leaves a strip
+        (a deck, one side of a hull). The material is an open sheet: its normals are set here and never recalculated."""
+        bm = self._bm(mat)
+        self.open.add(mat)
+        ring_b = [[B(*p) for p in ring] for ring in rings]
+        cents = [sum(r, Vector()) / len(r) for r in ring_b]
+        axes = [B(*axis(k)) if axis else cents[k] for k in range(len(rings))]
+        n = len(rings[0])
+
+        def add(a, b, c, out):
+            if (b - a).cross(c - a).dot(out) < 0:
+                b, c = c, b
+            try:
+                bm.faces.new([bm.verts.new(a), bm.verts.new(b), bm.verts.new(c)])
+            except ValueError:
+                pass
+        for k in range(len(rings) - 1):
+            mid = (axes[k] + axes[k + 1]) / 2
+            for i in range(n if closed else n - 1):
+                j = (i + 1) % n
+                p = [ring_b[k][i], ring_b[k][j], ring_b[k + 1][j], ring_b[k + 1][i]]
+                out = sum(p, Vector()) / 4 - mid
+                add(p[0], p[1], p[2], out)
+                add(p[0], p[2], p[3], out)
+        for end, ring, other in ((cap_a, 0, 1), (cap_b, len(rings) - 1, len(rings) - 2)):
+            if end:
+                out = cents[ring] - cents[other]
+                for i in range(n):
+                    add(cents[ring], ring_b[ring][i], ring_b[ring][(i + 1) % n], out)
 
     def spot(self, name, x, y, z):
         self.spots[name] = (x, y, z)

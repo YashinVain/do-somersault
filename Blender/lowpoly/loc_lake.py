@@ -43,12 +43,18 @@ def lake_height(x, z):
     ang = math.atan2(dz, dx)
     wobble = 1.0 + 0.08 * math.sin(ang * 3 + 0.7) + 0.05 * math.sin(ang * 5 + 2.1)
     d = math.hypot(dx, dz) / wobble
-    t = max(0.0, min(1.0, (d - 0.86) / (1.14 - 0.86)))
+    t = max(0.0, min(1.0, (d - 0.74) / (1.22 - 0.74)))
+    # a steep drop-off under the water, a shallow shelf at the waterline, then a long soft beach up to the grass
+    if t < 0.5:
+        u = t / 0.5
+        h = -4.2 + (-0.15 + 4.2) * (u * u * (3 - 2 * u))
+    else:
+        u = (t - 0.5) / 0.5
+        h = -0.15 + (1.3 + 0.15) * (u * u * (3 - 2 * u))
     shore = t * t * (3 - 2 * t)
-    h = -4.2 + (1.3 + 4.2) * shore
     h += shore * lake_noise(x, z) * 2.4
     if (abs(x) < 3 or abs(x + 12) < 2.5) and z < -12:
-        h = min(h, 0.75)
+        h = min(h, 0.95 if abs(x) < 3 else 0.75)    # the earth lane runs level with the end of the pier / the jetty
     return h
 
 
@@ -173,15 +179,25 @@ def willow_islet(b):
     b.spot('Spot_Branch', -17, 7, -1.6)
 
 
+def landfall(x, top, z_from):
+    """Where a deck at height `top` comes ashore along x: walking inland (towards -z) from z_from, the first z where the ground is within
+    0.12 of the deck; the deck is run half a metre further in so its end lies on the ground and never hangs over the water."""
+    z = z_from
+    while z > -45 and lake_height(x, z) < top - 0.12:
+        z -= 0.1
+    return z - 0.5
+
+
 def jetty_and_tower(b):
     # the jetty: boards, piles, a life ring, a moored boat and a few fishing things
     jx, jtop, jend = -12.0, 0.8, -7.0
-    plank_run(b, jx, -19.0, jend, jtop, 1.8)
-    for z in range(-18, -7, 3):
+    js = landfall(jx, jtop, jend)
+    plank_run(b, jx, js, jend, jtop, 1.8)
+    for z in range(int(js) + 1, -7, 3):
         for dx in (-0.8, 0.8):
-            b.limb('WoodDark', (jx + dx, -4.0, z), (jx + dx, jtop - 0.1, z), 0.11, 0.1, 6)
+            b.limb('WoodDark', (jx + dx, min(-4.0, lake_height(jx + dx, z) - 0.2), z), (jx + dx, jtop - 0.1, z), 0.11, 0.1, 6)
     for dx in (-0.9, 0.9):
-        b.box('WoodDark', jx + dx, jtop - 0.12, (-19.0 + jend) / 2, 0.12, 0.14, jend + 19)   # the stringers
+        b.box('WoodDark', jx + dx, jtop - 0.12, (js + jend) / 2, 0.12, 0.14, jend - js)   # the stringers
     for z in (-17.5, -13.0, -8.0):
         b.limb('WoodDark', (jx - 0.9, jtop, z), (jx - 0.9, jtop + 0.6, z), 0.07, 0.06, 5)
     b.cone('LifeRing', jx - 0.95, 0.35, -10.0, 0.26, 0.26, 0.14, 12)
@@ -193,12 +209,13 @@ def jetty_and_tower(b):
 
     # the long pier and the tower
     pier_top, back, front, top = 1.0, -4.2, -1.0, 9.6
-    plank_run(b, 0.0, -20.0, back, pier_top, 2.4)
-    for z in range(-19, int(back), 3):
+    ps = landfall(0.0, pier_top, back)
+    plank_run(b, 0.0, ps, back, pier_top, 2.4)
+    for z in range(int(ps) + 1, int(back), 3):
         for dx in (-1.1, 1.1):
-            b.limb('WoodDark', (dx, -4.0, z), (dx, pier_top - 0.1, z), 0.12, 0.11, 6)
+            b.limb('WoodDark', (dx, min(-4.0, lake_height(dx, z) - 0.2), z), (dx, pier_top - 0.1, z), 0.12, 0.11, 6)
     for dx in (-1.15, 1.15):
-        b.box('WoodDark', dx, pier_top - 0.12, (-20.0 + back) / 2, 0.14, 0.16, back + 20)
+        b.box('WoodDark', dx, pier_top - 0.12, (ps + back) / 2, 0.14, 0.16, back - ps)
     for x in (-1.5, 1.5):
         for z in (back, front):
             b.box('WoodDark', x, (-4.0 + top) / 2, z, 0.24, top + 4.0, 0.24, bevel=0.015)
@@ -394,6 +411,8 @@ def main():
     view.shoot('loc_lake_tower', (0, 3, -4), 36, (0.9, 0.35, 0.5), lens=50, res=(1100, 700))
     view.shoot('loc_lake_aqueduct', (26, 6, -22), 55, (-0.9, 0.25, 0.4), lens=50, res=(1100, 700))
     view.shoot('loc_lake_islet', (-17, 4, -6), 30, (0.7, 0.35, 0.8), lens=50, res=(1100, 700))
+    view.shoot('loc_lake_pier', (0, 0.8, -21), 16, (-0.6, 0.5, -1), lens=50, res=(1100, 700))
+    view.shoot('loc_lake_pier_side', (-6, 0.8, -22), 22, (1, 0.25, -0.2), lens=50, res=(1100, 700))
     print('LOC DONE')
 
 

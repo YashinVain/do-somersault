@@ -10,17 +10,26 @@ namespace JumpGame.EditorTools
     {
         // `replaced`: children of the site whose renderers the model takes over. Renderers named Water* always stay (the sea is the
         // game's own shader). `hideLife`: parts of the site's Life group the model already has (bunting, a rubber duck ...).
-        static bool UseLocationModel(Transform site, string file, string[] replaced, string[] hideLife = null)
+        static bool UseLocationModel(Transform site, string file, string[] replaced, string[] hideLife = null, string[] keep = null)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_Project/Models/Locations/{file}.fbx");
             if (prefab == null) return false;
 
-            foreach (var name in replaced)
+            // `keep`: things inside the replaced parts that stay (palms that sway, a bird): a renderer with one of these in its path is left on.
+            bool Kept(Transform t, Transform top)
             {
-                var part = site.Find(name);
-                if (part == null) continue;
+                if (keep == null) return false;
+                for (; t != null && t != top.parent; t = t.parent)
+                    foreach (var key in keep)
+                        if (t.name.Contains(key)) return true;
+                return false;
+            }
+            // Every child with one of these names (a name may repeat: two beaches, three sea rocks).
+            foreach (Transform part in site)
+            {
+                if (System.Array.IndexOf(replaced, part.name) < 0) continue;
                 foreach (var r in part.GetComponentsInChildren<Renderer>(true))
-                    if (!r.gameObject.name.Contains("Water")) r.enabled = false;
+                    if (!r.gameObject.name.Contains("Water") && !Kept(r.transform, part)) r.enabled = false;
             }
             if (hideLife != null)
             {
@@ -47,6 +56,20 @@ namespace JumpGame.EditorTools
                 r.sharedMaterials = shared;
             }
             return true;
+        }
+
+        // The corners of the cliff wall's faceted face, for Blender/lowpoly/loc_cliffs.py: the model has to follow exactly the same rock the
+        // collision boxes (WallSolids) were fitted to. Run: Unity -batchmode -executeMethod JumpGame.EditorTools.PrototypeSceneBuilder.DumpCliffWall
+        public static void DumpCliffWall()
+        {
+            var mesh = LowPolyMeshes.CliffWall("CliffWall", CliffBlockSize, -6f, CliffTop, 24, 9, 3, CliffBack, CliffFaceZ, 21);
+            var sb = new System.Text.StringBuilder();
+            foreach (var v in mesh.vertices)
+                sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0:F4} {1:F4} {2:F4}", v.x, v.y, v.z));
+            string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "Blender", "lowpoly", "data"));
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "cliff_wall.txt"), sb.ToString());
+            Debug.Log("cliff wall dumped: " + mesh.vertexCount + " vertices");
         }
     }
 }

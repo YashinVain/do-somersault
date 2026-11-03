@@ -24,12 +24,16 @@ namespace JumpGame.EditorTools
             float ang = Mathf.Atan2(dz, dx);
             float wobble = 1f + 0.08f * Mathf.Sin(ang * 3f + 0.7f) + 0.05f * Mathf.Sin(ang * 5f + 2.1f);
             float d = Mathf.Sqrt(dx * dx + dz * dz) / wobble;
-            float shore = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.86f, 1.14f, d));
-            float h = Mathf.Lerp(-4.2f, 1.3f, shore);
+            float t = Mathf.InverseLerp(0.74f, 1.22f, d);
+            // a steep drop-off under the water, a shallow shelf at the waterline, then a long soft beach up to the grass (same in loc_lake.py)
+            float h = t < 0.5f
+                ? Mathf.Lerp(-4.2f, -0.15f, Mathf.SmoothStep(0f, 1f, t / 0.5f))
+                : Mathf.Lerp(-0.15f, 1.3f, Mathf.SmoothStep(0f, 1f, (t - 0.5f) / 0.5f));
+            float shore = Mathf.SmoothStep(0f, 1f, t);
             h += shore * LakeNoise(x, z) * 2.4f;
 
             bool landing = (Mathf.Abs(x) < 3f || Mathf.Abs(x + 12f) < 2.5f) && z < -12f;
-            if (landing) h = Mathf.Min(h, 0.75f);
+            if (landing) h = Mathf.Min(h, Mathf.Abs(x) < 3f ? 0.95f : 0.75f);   // the lane runs level with the end of the pier / the jetty (same in loc_lake.py)
             return h;
         }
 
@@ -518,6 +522,11 @@ namespace JumpGame.EditorTools
             foreach (var p in stones) Put(shard, "SeaRock", site, p, new Vector3(R(2.5f, 4f), R(1.8f, 2.6f), R(2.5f, 4f)), rockMats[2]);
 
             CliffLife(site);
+            // The Blender model of the cliffs is what the player sees; the boxes and spots built above stay as the physics. The swaying palms and
+            // the gull on the stack are the game's own and stay.
+            UseLocationModel(site, "Loc_Cliffs", new[] { "Cliff", "Seabed", "Base_Soil", "Base_Earth", "Base_Rock", "Beach", "SeaRock", "Yacht",
+                                                         "Hull", "Stripe", "Bow", "BowStripe", "Deck", "BowDeck", "Cabin", "CabinWindows", "Mast", "Porthole", "Rail", "Stanchion" },
+                             null, new[] { "Palm", "StackBird" });
             site.position = SiteOffsets[2];
 
             return MakeSite(site, tower, new Look
