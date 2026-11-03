@@ -154,6 +154,8 @@ namespace JumpGame.EditorTools
 
             var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 0f, -2.5f, -2.5f, -2.5f, -2.5f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 14f));
+            // The Blender model of the bay is what the player sees; the boxes and spots built above stay as the physics. The penguins are the game's own.
+            UseLocationModel(site, "Loc_Arctic", new[] { "Ice", "Seabed", "Base_Soil", "Base_Earth", "Base_Rock" }, null, new[] { "Penguin" });
             site.position = SiteOffsets[4];
 
             return MakeSite(site, tower, new Look

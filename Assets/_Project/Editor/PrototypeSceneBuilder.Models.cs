@@ -69,15 +69,21 @@ namespace JumpGame.EditorTools
         // The corners of the cliff wall's faceted face, for Blender/lowpoly/loc_cliffs.py: the model has to follow exactly the same rock the
         // collision boxes (WallSolids) were fitted to. Run: Unity -batchmode -executeMethod JumpGame.EditorTools.PrototypeSceneBuilder.DumpCliffWall
         public static void DumpCliffWall()
+            => DumpWall(LowPolyMeshes.CliffWall("CliffWall", CliffBlockSize, -6f, CliffTop, 24, 9, 3, CliffBack, CliffFaceZ, 21), "cliff_wall.txt");
+
+        // The same for the glacier of the northern bay (Blender/lowpoly/loc_arctic.py): -executeMethod JumpGame.EditorTools.PrototypeSceneBuilder.DumpGlacierWall
+        public static void DumpGlacierWall()
+            => DumpWall(LowPolyMeshes.CliffWall("GlacierWall", SeaBlockSize, -6f, GlacierTop, 24, 10, 3, GlacierBack, GlacierFaceZ, 33), "glacier_wall.txt");
+
+        static void DumpWall(Mesh mesh, string file)
         {
-            var mesh = LowPolyMeshes.CliffWall("CliffWall", CliffBlockSize, -6f, CliffTop, 24, 9, 3, CliffBack, CliffFaceZ, 21);
             var sb = new System.Text.StringBuilder();
             foreach (var v in mesh.vertices)
                 sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0:F4} {1:F4} {2:F4}", v.x, v.y, v.z));
             string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "Blender", "lowpoly", "data"));
             System.IO.Directory.CreateDirectory(dir);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "cliff_wall.txt"), sb.ToString());
-            Debug.Log("cliff wall dumped: " + mesh.vertexCount + " vertices");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, file), sb.ToString());
+            Debug.Log(file + " dumped: " + mesh.vertexCount + " vertices");
         }
     }
 }
