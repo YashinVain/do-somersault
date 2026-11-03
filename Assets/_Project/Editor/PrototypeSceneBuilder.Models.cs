@@ -51,8 +51,16 @@ namespace JumpGame.EditorTools
                 var shared = r.sharedMaterials;
                 for (int i = 0; i < shared.Length; i++)
                     if (shared[i] != null)
+                    {
                         // One material per location and purpose ("Lake_Wood"): two locations may call different browns "Wood".
-                        shared[i] = Mat(file.Substring(file.IndexOf('_') + 1) + "_" + shared[i].name, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), shared[i].name.Contains("Glass") ? 0.5f : 0.08f);
+                        string role = shared[i].name;
+                        var made = Mat(file.Substring(file.IndexOf('_') + 1) + "_" + role, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), role.Contains("Glass") ? 0.5f : 0.08f);
+                        // Night scenes: windows and lamps (Lit, RedLight, GreenLight) glow.
+                        if (role == "Lit") made = Glow(made, 1.6f);
+                        else if (role == "RedLight") made = Glow(made, 1.3f);
+                        else if (role == "GreenLight") made = Glow(made, 1.2f);
+                        shared[i] = made;
+                    }
                 r.sharedMaterials = shared;
             }
             return true;

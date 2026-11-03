@@ -193,6 +193,8 @@ namespace JumpGame.EditorTools
 
             var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, 1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -2.5f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 10f));
+            // The Blender model of the harbour is what the player sees; the boxes and spots built above stay as the physics.
+            UseLocationModel(site, "Loc_Port", new[] { "Port", "Seabed", "Base_Soil", "Base_Earth", "Base_Rock" });
             site.position = SiteOffsets[3];
 
             return MakeSite(site, tower, new Look
