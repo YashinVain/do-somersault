@@ -27,6 +27,7 @@ COLOURS = {
     'AwnRed': '#C9413A', 'AwnWhite': '#F4F1E8', 'AwnGreen': '#4E7A4A', 'Lit': '#FFD98A', 'Rope': '#D9C9A0', 'Cloth': '#F4F1E8', 'ClothB': '#6A9BC4',
     'Sand': '#E8C99B', 'Salmon': '#E7A58D', 'Cream': '#EDE1B4', 'Mint': '#9CC7B8', 'Mauve': '#C9A3B8', 'Yellow': '#F0D58A',
     'Terra': '#D9895F', 'Ochre': '#D9A441', 'Peach': '#F2C6A0', 'Sky': '#A9C9DC', 'Olive': '#B5B77A', 'Rose': '#D99AA3', 'Tank': '#8A929A', 'Fruit': '#E8742A', 'FruitG': '#8FB04A',
+    'Spray': '#D5F2F4', 'Water': '#3FB3C0', 'FlagG': '#3C8A4E', 'FlagR': '#C9413A', 'Rug': '#B5342A', 'RugB': '#E8D9A8', 'Bronze': '#8A6A3A', 'Pigeon': '#9AA3AA', 'Fur': '#C79A52',
     'PoleRed': '#C9413A', 'PoleWhite': '#F4F1E8', 'BoatRed': '#B23A32', 'BoatWhite': '#EDEBE4',
 }
 PLASTER = ['Sand', 'Salmon', 'Cream', 'Mint', 'Mauve', 'Yellow', 'Terra', 'Ochre', 'Peach', 'Sky', 'Olive', 'Rose']
@@ -608,8 +609,204 @@ def balcony(b, bx, y, zf, o, width=4.0, depth=2.4, gap=(-0.3, 0.3), door=True, n
             b.box('Glass', bx - 0.27 + q * 0.54, y + 1.45, zf + 0.17 * o, 0.38, 0.8, 0.03)
     planter(b, bx + 1.5, y, zf + o * (depth - 0.3), 0.95, seed)
     pot(b, bx - 1.6, y, zf + o * 0.6, 0.9, seed + 3)
+    jump_mark(b, bx, y, zf + o * depth, o, 1.0)
+    topiary(b, bx - 1.5, y, zf + o * (depth - 0.3))
     if name:
         b.spot(name, bx, y, zf + o * depth)
+
+
+def jump_mark(b, x, y, zfront, o, width=1.0, flat=False):
+    """The place to dive from, made to stand out: a red runner with a cream border and a brass strip along the edge, set flush into the floor."""
+    zc = zfront - o * 0.75
+    b.box('Rug', x, y + 0.012, zc, width * 1.05, 0.024, 1.3)
+    b.box('RugB', x - width * 0.52, y + 0.014, zc, 0.07, 0.026, 1.34)
+    b.box('RugB', x + width * 0.52, y + 0.014, zc, 0.07, 0.026, 1.34)
+    for q in range(3):
+        b.box('RugB', x, y + 0.016, zc - o * 0.4 + o * q * 0.4, width * 0.5, 0.028, 0.06)
+    b.box('Gold', x, y + 0.02, zfront - o * 0.07, width * 1.3, 0.03, 0.12)
+    for sg in (-1, 1):
+        b.cone('Gold', x + sg * width * 0.72, y + 0.012, zfront - o * 0.07, 0.07, 0.07, 0.14, 6)
+
+
+def topiary(b, x, y, z):
+    b.cone('Terracotta', x, y, z, 0.24, 0.18, 0.38, 8)
+    b.limb('WoodDark', (x, y + 0.38, z), (x, y + 0.7, z), 0.03, 0.03, 4)
+    b.ico('Leaf', x, y + 0.95, z, 0.3, 1.0, sub=1, jit=0.05, seed=int(x * 7))
+    b.ico('LeafDark', x, y + 1.3, z, 0.2, 1.0, sub=1, jit=0.05, seed=int(x * 5))
+
+
+def lion(b, x, y, z, yaw=0.0):
+    """A stone lion seated on a plinth, looking along yaw."""
+    c, s_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+
+    def P(u, h, v):
+        return (x + u * c + v * s_, y + h, z - u * s_ + v * c)
+    b.box('StoneLight', x, y + 0.12, z, 0.7, 0.24, 1.2, bevel=0.03, rot_y=yaw)
+    px, py, pz = P(0, 0.6, -0.1)
+    b.ico('Stone', px, py, pz, 0.32, 1.0, sub=1, sc=(0.9, 1.1, 1.3), jit=0.05, seed=int(x * 3))
+    px, py, pz = P(0, 1.0, 0.25)
+    b.ico('StoneLight', px, py, pz, 0.27, 1.0, sub=1, sc=(1.0, 1.0, 0.9), jit=0.05, seed=int(x * 3 + 1))
+    px, py, pz = P(0, 1.0, 0.18)
+    b.ico('StoneDark', px, py, pz, 0.34, 1.0, sub=1, sc=(1.05, 1.05, 0.7), jit=0.05, seed=int(x * 3 + 2))
+    for sg in (-1, 1):
+        for (u, v) in ((sg * 0.16, 0.38), ):
+            qx, qy, qz = P(u, 0.3, v)
+            b.box('Stone', qx, qy, qz, 0.14, 0.45, 0.18, rot_y=yaw)
+    qx, qy, qz = P(0, 0.3, -0.65)
+    b.limb('Stone', P(0, 0.35, -0.55), P(0.15, 0.3, -0.95), 0.05, 0.03, 4)
+    qx, qy, qz = P(0, 0.94, 0.5)
+    b.box('Dark', qx, qy, qz, 0.1, 0.06, 0.05, rot_y=yaw)
+
+
+def fountain(b, cx, cz):
+    """A tiered stone fountain: stepped base, a basin with a scalloped rim and water, a column carrying a second basin, and a boy with a jar; arcing jets and four spouts."""
+    y0 = QUAY_TOP
+    b.cone('StoneLight', cx, y0, cz, 1.95, 1.9, 0.12, 14)
+    b.cone('Stone', cx, y0 + 0.12, cz, 1.7, 1.65, 0.12, 14)
+    b.cone('StoneLight', cx, y0 + 0.24, cz, 1.5, 1.45, 0.5, 14)                                   # the basin wall
+    for q in range(14):                                                                          # scalloped coping
+        a = q * math.pi * 2 / 14
+        b.ico('StoneLight', cx + math.cos(a) * 1.46, y0 + 0.78, cz + math.sin(a) * 1.46, 0.17, 0.7, sub=0, sc=(1.0, 0.8, 1.0))
+    b.cone('Stone', cx, y0 + 0.7, cz, 1.4, 1.4, 0.08, 14)
+    b.cone('Water', cx, y0 + 0.62, cz, 1.32, 1.32, 0.06, 14)
+    for q in range(4):                                                                           # spouts on the basin wall: little lion masks
+        a = q * math.pi / 2 + 0.3
+        px, pz = cx + math.cos(a) * 1.5, cz + math.sin(a) * 1.5
+        b.box('Bronze', px, y0 + 0.5, pz, 0.2, 0.2, 0.12, rot_y=-math.degrees(a) + 90)
+        b.limb('Spray', (px + math.cos(a) * 0.08, y0 + 0.48, pz + math.sin(a) * 0.08), (px + math.cos(a) * 0.45, y0 + 0.3, pz + math.sin(a) * 0.45), 0.02, 0.03, 4)
+    b.cone('StoneLight', cx, y0 + 0.7, cz, 0.42, 0.3, 0.9, 10)                                   # the column
+    b.cone('Stone', cx, y0 + 1.55, cz, 0.95, 0.6, 0.2, 12)                                         # the upper basin
+    b.cone('Stone', cx, y0 + 1.72, cz, 0.98, 0.98, 0.08, 12)
+    b.cone('Water', cx, y0 + 1.68, cz, 0.88, 0.88, 0.06, 12)
+    b.cone('StoneLight', cx, y0 + 1.7, cz, 0.18, 0.14, 0.5, 8)
+    # the boy: a plinth, legs, body, head with curls, an arm up with a jar that pours
+    b.box('StoneLight', cx, y0 + 2.28, cz, 0.38, 0.12, 0.38, bevel=0.02)
+    for sg in (-1, 1):
+        b.limb('Stone', (cx + sg * 0.06, y0 + 2.34, cz), (cx + sg * 0.08, y0 + 2.7, cz + 0.04), 0.045, 0.04, 5)
+    b.ico('Stone', cx, y0 + 2.9, cz, 0.15, 1.0, sub=1, sc=(1.0, 1.4, 0.8), jit=0.03, seed=3)
+    b.ico('StoneLight', cx, y0 + 3.2, cz, 0.1, 1.0, sub=1)
+    for k in range(5):
+        a = k * 1.26
+        b.ico('StoneLight', cx + math.cos(a) * 0.08, y0 + 3.28, cz + math.sin(a) * 0.08, 0.035, 1.0, sub=0)
+    b.limb('Stone', (cx + 0.12, y0 + 3.0, cz), (cx + 0.3, y0 + 3.2, cz + 0.05), 0.035, 0.03, 4)
+    b.limb('Stone', (cx - 0.12, y0 + 3.0, cz), (cx - 0.28, y0 + 2.75, cz + 0.12), 0.035, 0.03, 4)
+    b.cone('Bronze', cx + 0.34, y0 + 3.2, cz + 0.05, 0.07, 0.1, 0.16, 6)
+    b.limb('Spray', (cx + 0.34, y0 + 3.2, cz + 0.05), (cx + 0.45, y0 + 2.4, cz + 0.05), 0.02, 0.03, 4)
+    b.limb('Spray', (cx + 0.45, y0 + 2.4, cz + 0.05), (cx + 0.6, y0 + 1.8, cz + 0.05), 0.03, 0.03, 4)
+    for q in range(6):                                                                           # jets arcing from the upper basin into the lower
+        a = q * math.pi / 3
+        top = (cx + math.cos(a) * 0.75, y0 + 1.78, cz + math.sin(a) * 0.75)
+        mid = (cx + math.cos(a) * 1.05, y0 + 1.7, cz + math.sin(a) * 1.05)
+        end = (cx + math.cos(a) * 1.25, y0 + 0.66, cz + math.sin(a) * 1.25)
+        b.limb('Spray', top, mid, 0.02, 0.02, 3)
+        b.limb('Spray', mid, end, 0.02, 0.03, 3)
+    for q in range(12):                                                                          # foam and a few petals on the water
+        a = q * 0.52
+        b.ico('Spray', cx + math.cos(a) * 1.2, y0 + 0.66, cz + math.sin(a) * 1.2, 0.1, 0.4, sub=0)
+
+
+def bunting(b, p0, p1, n=9, sag=0.5):
+    """A string of little triangular flags between two points."""
+    rope(b, p0, p1, sag, 'Rope', 0.012, 8)
+    cols = ('FlagR', 'AwnWhite', 'FlagG', 'Yellow', 'Sky', 'FlagR')
+    for i in range(n):
+        t = (i + 0.5) / n
+        x = p0[0] + (p1[0] - p0[0]) * t
+        y = p0[1] + (p1[1] - p0[1]) * t - sag * 4 * t * (1 - t)
+        z = p0[2] + (p1[2] - p0[2]) * t
+        b.tri(cols[i % len(cols)], (x - 0.13, y, z), (x + 0.13, y, z), (x, y - 0.32, z))
+
+
+def bicycle(b, x, z, yaw):
+    """A bicycle leaning on the wall: two wheels, a frame, handlebars, a saddle and a basket of flowers."""
+    c, s_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+
+    def P(u, h, v):
+        return (x + u * c + v * s_, QUAY_TOP + h, z - u * s_ + v * c)
+    for v in (-0.55, 0.55):
+        p0, p1 = P(-0.03, 0.34, v), P(0.03, 0.34, v)
+        b.limb('Tire', p0, p1, 0.34, 0.34, 12)
+        b.limb('Steel' if 'Steel' in COLOURS else 'Iron', p0, p1, 0.31, 0.31, 12)
+        b.limb('Tire', P(-0.04, 0.34, v), P(0.04, 0.34, v), 0.05, 0.05, 6)
+    b.limb('Iron', P(0, 0.34, -0.55), P(0, 0.62, -0.15), 0.025, 0.025, 4)
+    b.limb('Iron', P(0, 0.62, -0.15), P(0, 0.34, 0.55), 0.025, 0.025, 4)
+    b.limb('Iron', P(0, 0.62, -0.15), P(0, 0.64, 0.4), 0.025, 0.025, 4)
+    b.limb('Iron', P(0, 0.64, 0.4), P(0, 0.96, 0.48), 0.022, 0.022, 4)
+    b.limb('Iron', P(-0.22, 0.96, 0.48), P(0.22, 0.96, 0.48), 0.02, 0.02, 4)
+    b.box('Iron', *P(0, 0.76, -0.2), 0.12, 0.05, 0.28, rot_y=yaw)
+    b.box('Terracotta', *P(0, 0.78, 0.7), 0.26, 0.22, 0.2, rot_y=yaw)
+    b.ico('Flower', *P(0, 0.95, 0.7), 0.09, 1.0, sub=0)
+    b.ico('FlowerYellow', *P(0.06, 0.93, 0.66), 0.07, 1.0, sub=0)
+
+
+def pigeon(b, x, y, z, yaw=0.0):
+    c, s_ = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    b.ico('Pigeon', x, y + 0.1, z, 0.1, 1.0, sub=1, sc=(0.8, 0.85, 1.3))
+    b.ico('Pigeon', x + 0.1 * s_, y + 0.2, z + 0.1 * c, 0.06, 1.0, sub=0)
+    b.limb('Pigeon', (x, y + 0.1, z), (x - 0.18 * s_, y + 0.08, z - 0.18 * c), 0.05, 0.02, 3)
+
+
+def flag_pole(b, x, y, z, o, length=1.6):
+    """A flagpole angled out of a window with a tricolour."""
+    tip = (x, y + 0.5, z + length * o)
+    b.limb('Iron', (x, y, z), tip, 0.03, 0.025, 4)
+    for k, m in enumerate(('FlagG', 'AwnWhite', 'FlagR')):
+        zz = tip[2] - o * (0.1 + 0.28 * k)
+        b.box(m, x, tip[1] - 0.2, zz, 0.02, 0.34, 0.28)
+
+
+def details(b):
+    """Everything that makes the quays look lived in: bunting along the promenades, flower baskets on the lamps, bicycles, pigeons, flags, barrels, a cat."""
+    # bunting between the lamps along the near promenade and the far one
+    xs = [x for x in range(-40, 41, 10) if not (abs(x - 20) < 3 or abs(x - 36) < 8)]
+    for x0, x1 in zip(xs, xs[1:]):
+        if x1 - x0 == 10:
+            bunting(b, (x0, QUAY_TOP + 4.3, -3.9), (x1, QUAY_TOP + 4.3, -3.9), 9, 0.55)
+    xs = [x for x in range(-36, 41, 12) if abs(x - 24) >= 4]
+    for x0, x1 in zip(xs, xs[1:]):
+        if x1 - x0 == 12:
+            bunting(b, (x0 + 3.0, QUAY_TOP + 4.3, 50.2), (x1 + 3.0, QUAY_TOP + 4.3, 50.2), 11, 0.6)
+    # flower baskets hanging on the lamp posts
+    for x in range(-40, 41, 10):
+        if abs(x - 20) < 3 or abs(x - 36) < 8:
+            continue
+        for q in range(5):
+            a = q * 1.26
+            b.ico('Leaf' if q % 2 else 'LeafDark', x + math.cos(a) * 0.22, QUAY_TOP + 2.55, -3.55 + math.sin(a) * 0.22, 0.12, 0.8, sub=0)
+            b.ico(('Flower', 'FlowerYellow', 'FlowerPink', 'FlowerWhite', 'Flower')[q], x + math.cos(a) * 0.25, QUAY_TOP + 2.68, -3.55 + math.sin(a) * 0.25, 0.07, 1.0, sub=0)
+        b.cone('Terracotta', x, QUAY_TOP + 2.35, -3.55, 0.18, 0.12, 0.2, 8)
+        b.limb('Iron', (x, QUAY_TOP + 2.5, -3.55), (x + 0.2, QUAY_TOP + 2.5, -3.55), 0.02, 0.02, 3)
+    for x in range(-36, 41, 12):
+        if abs(x - 24) < 4:
+            continue
+        for q in range(5):
+            a = q * 1.26
+            b.ico('Leaf' if q % 2 else 'LeafDark', x + 3.0 + math.cos(a) * 0.22, QUAY_TOP + 2.55, 50.5 + math.sin(a) * 0.22, 0.12, 0.8, sub=0)
+            b.ico(('FlowerPink', 'Flower', 'FlowerYellow', 'FlowerWhite', 'FlowerPink')[q], x + 3.0 + math.cos(a) * 0.25, QUAY_TOP + 2.68, 50.5 + math.sin(a) * 0.25, 0.07, 1.0, sub=0)
+        b.cone('Terracotta', x + 3.0, QUAY_TOP + 2.35, 50.5, 0.18, 0.12, 0.2, 8)
+    bicycle(b, -38.2, -3.72, 0.0)
+    bicycle(b, 3.6, -3.72, 0.0)
+    bicycle(b, 36.0, 50.3, 0.0)
+    bicycle(b, -8.0, 50.3, 0.0)
+    for x, h, k in ((-40.0, 10.0, 0), (-33.0, 12.0, 1), (6.0, 12.0, 7), (12.5, 8.0, 8), (26.0, 9.0, 9)):
+        pigeon(b, x + 1.3, QUAY_TOP + h + 2.7, -8.2, 40 * k)
+        pigeon(b, x - 0.9, QUAY_TOP + h + 2.7, -8.6, -50)
+    for x, h in ((4.0, 11.0), (-14.0, 12.0), (41.0, 9.0), (-31.0, 11.0)):
+        pigeon(b, x + 1.0, QUAY_TOP + h + 2.7, 55.5, 160)
+    for x, y in ((-33.0, 8.0), (6.0, 9.5), (-40.0, 6.0)):
+        flag_pole(b, x + 1.2, QUAY_TOP + y, -4.35, 1.0)
+    for x, y in ((-5.0, 7.0), (33.0, 6.5)):
+        flag_pole(b, x - 1.2, QUAY_TOP + y, 50.9, -1.0)
+    for x, z, k in ((-23.5, -3.7, 0), (28.5, 50.4, 1), (-1.0, -3.65, 2), (1.0, 49.7, 3)):                # wine barrels and crates at the doors
+        b.cone('WoodDark', x, QUAY_TOP, z, 0.35, 0.33, 0.8, 9)
+        b.cone('Iron', x, QUAY_TOP + 0.2, z, 0.355, 0.355, 0.04, 9)
+        b.cone('Iron', x, QUAY_TOP + 0.55, z, 0.355, 0.355, 0.04, 9)
+        b.box('Wood', x + 0.7, QUAY_TOP + 0.22, z, 0.5, 0.45, 0.5, bevel=0.02)
+        b.ico('Fruit' if 'Fruit' in COLOURS else 'Flower', x + 0.7, QUAY_TOP + 0.5, z, 0.12, 1.0, sub=0)
+    # a cat on a sill
+    b.ico('Fur', -27.2, QUAY_TOP + 3.0, -4.45, 0.12, 1.0, sub=1, sc=(1.0, 0.8, 1.3))
+    b.ico('Fur', -27.2, QUAY_TOP + 3.12, -4.35, 0.08, 1.0, sub=0)
+    b.limb('Fur', (-27.2, QUAY_TOP + 3.0, -4.56), (-27.0, QUAY_TOP + 3.05, -4.8), 0.025, 0.02, 3)
 
 
 # ---------------------------------------------------------------- the footbridge (collision: piers, arch, deck 14 x 0.4 x 3.2 at y 4.8, steps up both sides)
@@ -626,17 +823,10 @@ def footbridge(b):
         soffit = -1.3 + 5.3 * math.sqrt(max(0.0, 1.0 - (x / 8.0) ** 2))
         rings.append([(x, 4.62, z0), (x, 4.62, z1), (x, soffit, z1), (x, soffit, z0)])
     b.skin('Stone', rings, axis=lambda k: (stations[k], 1.5, zc), closed=True, cap_a=True, cap_b=True)
-    for i in range(0, 28, 2):                                                                     # voussoir joints on both faces
-        x = stations[i]
-        soffit = -1.3 + 5.3 * math.sqrt(max(0.0, 1.0 - (x / 8.0) ** 2))
-        for zz in (z0 - 0.02, z1 + 0.02):
-            b.limb('StoneDark', (x, soffit, zz), (x, min(soffit + 0.9, 4.6), zz), 0.03, 0.03, 3)
-    for x in stations[::2]:
-        soffit = -1.3 + 5.3 * math.sqrt(max(0.0, 1.0 - (x / 8.0) ** 2))
-        b.box('StoneLight', x, soffit + 0.05, z1 + 0.04, 0.6, 0.14, 0.14)
     b.box('StoneLight', 0, 4.8, zc, 14.0, 0.4, 3.2, bevel=0.03)
     b.box('Stone', 0, 4.58, zc, 14.4, 0.14, 3.3)                                                # the string course under the deck
-    b.box('StoneDark', 0, 3.3, z1 + 0.04, 0.9, 1.1, 0.16, bevel=0.03)
+    b.box('StoneDark', 0, 4.3, z1 + 0.05, 0.7, 0.62, 0.14, bevel=0.03)
+    b.box('StoneLight', 0, 4.3, z1 + 0.09, 0.5, 0.42, 0.06)
     # steps up the ramps from the quay to the deck, with solid cheeks
     for s in (-1, 1):
         for k in range(9):
@@ -662,7 +852,10 @@ def footbridge(b):
             top = QUAY_TOP + (5.0 - QUAY_TOP) * (k + 1) / 9
             b.box('Stone', s * x_a, top + 0.35, z0 + 0.15, 0.64, 0.7, 0.3)
             b.box('Stone', s * x_a, top + 0.35, z1 - 0.15, 0.64, 0.7, 0.3)
-    for px in (-6.9, -2.1, 2.1, 6.9):                                                            # urn finials
+    for px in (-2.1, 2.1):                                                                       # urns beside the opening
+        b.cone('StoneLight', px, 5.7, z1 - 0.15, 0.2, 0.12, 0.35, 8)
+        b.ico('Leaf', px, 6.2, z1 - 0.15, 0.28, 0.9, sub=1, jit=0.12, seed=int(px * 5))
+    for px in (-6.9, 6.9):
         b.cone('StoneLight', px, 5.7, z1 - 0.15, 0.2, 0.12, 0.35, 8)
         b.ico('Leaf', px, 6.2, z1 - 0.15, 0.28, 0.9, sub=1, jit=0.12, seed=int(px * 5))
     b.ico('Leaf', 0.0, 6.0, z0 + 0.15, 0.3, 0.9, sub=1, jit=0.1, seed=7)
@@ -672,11 +865,7 @@ def footbridge(b):
         b.cone('Iron', sx, 8.0, z0 + 0.15, 0.22, 0.02, 0.2, 4)
     # the two piers are landings with something on them: a fountain and a bench on the west one, a gelato cart under a tree on the east one
     bench_z = -1.9
-    b.cone('StoneLight', -11.0, QUAY_TOP, bench_z, 1.1, 1.0, 0.5, 10)
-    b.cone('Stone', -11.0, QUAY_TOP + 0.5, bench_z, 0.9, 0.85, 0.3, 10)
-    b.cone('StoneLight', -11.0, QUAY_TOP + 0.8, bench_z, 0.12, 0.2, 1.0, 8)
-    b.cone('Stone', -11.0, QUAY_TOP + 1.8, bench_z, 0.5, 0.3, 0.14, 10)
-    b.cone('CanalDark', -11.0, QUAY_TOP + 0.78, bench_z, 0.8, 0.8, 0.04, 10)
+    tree(b, -11.0, bench_z, 1.1, 9)                                                           # a tree between the benches
     for sg in (-1, 1):
         b.box('Wood', -11.0 + sg * 1.7, QUAY_TOP + 0.45, bench_z, 0.45, 0.06, 1.4, bevel=0.02)
         b.box('Wood', -11.0 + sg * 1.9, QUAY_TOP + 0.85, bench_z, 0.06, 0.4, 1.4, bevel=0.02)
@@ -694,7 +883,11 @@ def footbridge(b):
     b.cone('Cone', 9.0, QUAY_TOP + 1.3, -1.6, 0.14, 0.02, 0.35, 8) if 'Cone' in COLOURS else b.ico('Flower', 9.0, QUAY_TOP + 1.45, -1.6, 0.14, 1.0, sub=0)
     b.ico('FlowerYellow', 9.4, QUAY_TOP + 1.45, -1.6, 0.13, 1.0, sub=0)
     b.ico('FlowerPink', 9.8, QUAY_TOP + 1.45, -1.6, 0.13, 1.0, sub=0)
-    b.limb('Iron', (7.2, QUAY_TOP, -2.8), (7.2, QUAY_TOP, -2.8), 0.01, 0.01, 3)
+    jump_mark(b, 0.0, 5.0, 3.1, 1.0, 1.6)
+    for sg in (-1, 1):                                                                           # pennants on the posts at the opening
+        b.limb('WoodDark', (sg * 2.15, 5.0, 2.95), (sg * 2.15, 7.4, 2.95), 0.05, 0.04, 5)
+        b.tri('FlagR', (sg * 2.15, 7.4, 2.95), (sg * 2.15 + sg * 0.9, 7.15, 2.95), (sg * 2.15, 6.8, 2.95))
+        b.ico('Gold', sg * 2.15, 7.45, 2.95, 0.07, 1.0, sub=0)
     b.spot('Spot_Bridge', 0.0, 5.0, 3.1)
 
 
@@ -907,6 +1100,9 @@ def cathedral(b):
     b.skin('Roof', [[(dx - 1.25, 24.1, -5.1), (dx + 1.25, 24.1, -5.1)], [(dx - 1.25, 24.1, -6.6), (dx + 1.25, 24.1, -6.6)]], axis=lambda k: (dx, 20, -6.0), closed=False)
     for q in range(3):
         b.cone('StoneLight', dx - 4.5 + q * 4.5, QUAY_TOP + 15.2, -4.2 + 0.35, 0.3, 0.2, 0.9, 8)
+    jump_mark(b, dx, 21.875, -1.8, 1.0, 1.0)
+    topiary(b, dx - 1.3, 21.875, -2.2)
+    topiary(b, dx + 1.3, 21.875, -2.2)
     b.spot('Spot_Dome', dx, 22.0, -1.9)
 
 
@@ -976,6 +1172,13 @@ def quay_steps(b):
     for sx in (-1, 1):                                                                           # a low wall each side and an iron post with a ring
         b.box('Stone', -34.0 + sx * 1.7, QUAY_TOP - 0.1, -2.5, 0.4, 0.5, 1.8, bevel=0.03)
         b.cone('Iron', -34.0 + sx * 1.7, QUAY_TOP + 0.15, -3.7, 0.12, 0.08, 0.8, 6)
+    jump_mark(b, -34.0, QUAY_TOP, -3.0, 1.0, 1.4, flat=True)
+    for sx in (-1, 1):                                                                           # striped posts and a lantern at the head of the steps
+        px = -34.0 + sx * 2.2
+        b.limb('WoodDark', (px, QUAY_TOP, -3.45), (px, QUAY_TOP + 1.6, -3.45), 0.1, 0.09, 6)
+        for q in range(4):
+            b.cone('PoleRed' if q % 2 else 'PoleWhite', px, QUAY_TOP + 0.1 + q * 0.38, -3.45, 0.115, 0.115, 0.38, 6)
+        b.ico('Gold', px, QUAY_TOP + 1.68, -3.45, 0.1, 1.0, sub=0)
     b.spot('Spot_Steps', -34.0, QUAY_TOP, -3.0)
 
 
@@ -1149,6 +1352,7 @@ def build():
     clock_tower(b)
     quay_steps(b)
     life(b)
+    details(b)
     return b
 
 

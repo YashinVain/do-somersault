@@ -13,12 +13,17 @@ namespace JumpGame.EditorTools
         // Where the beach ends and the lagoon starts: close to the wall in the middle, further out on both sides.
         static float JungleShoreZ(float x) => -4f + 14f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(18f, 38f, Mathf.Abs(x)));
 
+        // A smooth wobble in about -0.5..0.5, made of sines so Blender can compute exactly the same ground (Blender/lowpoly/loc_jungle.py).
+        static float JungleNoise(float x, float z)
+            => 0.5f * (Mathf.Sin(x * 0.15f + 1.3f) * Mathf.Cos(z * 0.13f + 0.7f) * 0.6f + Mathf.Sin(x * 0.31f + z * 0.23f + 2.1f) * 0.4f);
+
+        // The beach sand sits at 1.0 so it meets the collision blocks of the beaches (top 1.0); only a gentle wobble on top of it.
         static float JungleHeight(float x, float z)
         {
             float shore = JungleShoreZ(x);
             float land = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(shore + 2.2f, shore - 1.2f, z));
-            float h = Mathf.Lerp(-4.2f, 1.2f, land);
-            h += land * (Mathf.PerlinNoise(x * 0.07f + 5f, z * 0.07f + 1f) - 0.5f) * 0.9f;
+            float h = Mathf.Lerp(-4.2f, 1.0f, land);
+            h += land * JungleNoise(x, z) * 0.2f;
             return h;
         }
 
@@ -252,6 +257,9 @@ namespace JumpGame.EditorTools
 
             var tower = MakeTower(root, spots, solids, new[] { -1f, 1f, -1f, 1f, 1f, 1f, 1f }, new[] { 0f, 0f, -2.5f, -2.5f, -3f, 0f, 0f });
             SeaGulls(site, new Vector3(0f, 0f, 14f));
+            // The Blender model of the lagoon is what the player sees; the boxes and spots built above stay as the physics. The swaying jungle trees and
+            // palms and the drifting mist of the falls are the game's own and stay.
+            UseLocationModel(site, "Loc_Jungle", new[] { "Jungle", "Ground", "Base_Soil", "Base_Earth", "Base_Rock" }, null, new[] { "Jungle_", "Palm", "Tree", "Mist" });
             site.position = SiteOffsets[6];
 
             return MakeSite(site, tower, new Look

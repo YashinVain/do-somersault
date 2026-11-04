@@ -59,6 +59,21 @@ namespace JumpGame.EditorTools
             CaptureLevels();
         }
 
+        // The 3D map of every location as the player sees it on the map screen: Logs/capture_map_<n>.png
+        public static void BuildAndCaptureMaps()
+        {
+            PrototypeSceneBuilder.Build();
+            Open();
+            flow.ApplySkin();
+            map.Preview(0);
+            for (int loc = 0; loc < flow.LocationCount; loc++)
+            {
+                flow.Load(flow.LevelsIn(loc)[1]);
+                map.Preview(1);
+                CaptureUi($"Logs/capture_map_{loc}.png", null, keepState: true);
+            }
+        }
+
         // Close side views of a few characters through a dive: standing, crouching, taking off, tucked, opening.
         public static void BuildAndCapturePoses()
         {

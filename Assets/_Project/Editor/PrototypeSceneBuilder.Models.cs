@@ -59,6 +59,7 @@ namespace JumpGame.EditorTools
                         if (role == "Lit") made = Glow(made, 1.6f);
                         else if (role == "RedLight") made = Glow(made, 1.3f);
                         else if (role == "GreenLight") made = Glow(made, 1.2f);
+                        else if (role == "Fall") made = Glow(made, 0.06f);        // the waterfall's pale sheet
                         shared[i] = made;
                     }
                 r.sharedMaterials = shared;
@@ -74,6 +75,28 @@ namespace JumpGame.EditorTools
         // The same for the glacier of the northern bay (Blender/lowpoly/loc_arctic.py): -executeMethod JumpGame.EditorTools.PrototypeSceneBuilder.DumpGlacierWall
         public static void DumpGlacierWall()
             => DumpWall(LowPolyMeshes.CliffWall("GlacierWall", SeaBlockSize, -6f, GlacierTop, 24, 10, 3, GlacierBack, GlacierFaceZ, 33), "glacier_wall.txt");
+
+        // The jungle's wall and where the game puts its own swaying trees and palms (Blender/lowpoly/loc_jungle.py keeps clear of them):
+        // -executeMethod JumpGame.EditorTools.PrototypeSceneBuilder.DumpJungle
+        public static void DumpJungle()
+        {
+            DumpWall(LowPolyMeshes.CliffWall("JungleWall", SeaBlockSize, -6f, JungleTop, 24, 10, 3, JungleBack, JungleFaceZ, 52), "jungle_wall.txt");
+            BuildJungleSite();
+            var site = GameObject.Find("Site_Jungle").transform;
+            var sb = new System.Text.StringBuilder();
+            foreach (var t in site.GetComponentsInChildren<Transform>(true))
+            {
+                string n = t.name;
+                if (n == "Jungle_A" || n == "Jungle_B" || n == "Jungle_C" || n == "Palm_A" || n == "Palm_B" || n == "Tree" || n == "Palm")
+                {
+                    var p = t.position - site.position;
+                    sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0} {1:F3} {2:F3} {3:F3} {4:F3}", n, p.x, p.y, p.z, t.lossyScale.x));
+                }
+            }
+            string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "Blender", "lowpoly", "data"));
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "jungle_trees.txt"), sb.ToString());
+            Debug.Log("jungle trees dumped");
+        }
 
         static void DumpWall(Mesh mesh, string file)
         {
