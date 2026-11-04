@@ -199,6 +199,8 @@ namespace JumpGame.EditorTools
 
             var tower = MakeTower(root, spots, solids, new[] { 1f, 1f, -1f, 1f, 1f, 1f, 1f }, new[] { 0f, -2.5f, -2.5f, -2.5f, -2.5f, -2.5f, -2.5f });
             SeaGulls(site, new Vector3(0f, 0f, 12f));
+            // The Blender model of the platform is what the player sees; the boxes and spots built above stay as the physics. The flame on the flare stack is the game's own.
+            UseLocationModel(site, "Loc_Rig", new[] { "Rig", "Seabed", "Base_Soil", "Base_Earth", "Base_Rock" }, null, new[] { "Flame" });
             site.position = SiteOffsets[7];
 
             return MakeSite(site, tower, new Look

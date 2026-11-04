@@ -54,7 +54,9 @@ namespace JumpGame.EditorTools
                     {
                         // One material per location and purpose ("Lake_Wood"): two locations may call different browns "Wood".
                         string role = shared[i].name;
-                        var made = Mat(file.Substring(file.IndexOf('_') + 1) + "_" + role, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), role.Contains("Glass") ? 0.5f : 0.08f);
+                        // The platform's old box materials were called Rig_Steel, Rig_Yellow ...: a different name keeps the model's own colours.
+                        string prefix = file == "Loc_Rig" ? "Platform" : file.Substring(file.IndexOf('_') + 1);
+                        var made = Mat(prefix + "_" + role, "#" + ColorUtility.ToHtmlStringRGB(shared[i].color), role.Contains("Glass") ? 0.5f : 0.08f);
                         // Night scenes: windows and lamps (Lit, RedLight, GreenLight) glow.
                         if (role == "Lit") made = Glow(made, 1.6f);
                         else if (role == "RedLight") made = Glow(made, 1.3f);
